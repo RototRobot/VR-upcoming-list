@@ -1,0 +1,3375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Filter Grid</title>
+    <style>
+        /* --- Basic Setup --- */
+        body {
+            font-family: sans-serif;
+            background-color: #0f1826;
+            margin: 0;
+            padding: 0; /* MODIFIED: Removed padding, moved to #main-content */
+            overflow-x: hidden;
+            width: 100%;            
+        }
+
+        /* --- 1. Outer Container: Sets the stage for positioning --- */
+        #filter-controls-row {
+            display: flex;         /* Enable Flexbox */
+            align-items: flex-start; /* Align items to the top of the row */
+            flex-wrap: wrap;       /* Allow the content to wrap onto multiple lines */
+            margin-bottom: 24px;
+            padding: 0 15px; 
+            width: 100%;
+            
+            /* NEW: Use justify-content to push the groups apart */
+            justify-content: space-between; 
+
+            position: static; 
+        }
+
+        /* Next Release Highlight Box */
+        #next-release-box {
+            position: relative;
+            overflow: hidden;
+
+            background: #1c2a3a;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+
+            border-left: 4px solid #4CAF50;
+            display: none;
+
+            backdrop-filter: blur(5px);
+        }
+
+        #next-release-box::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+
+            background-size: cover;
+            background-position: center;
+            opacity: 0.25;            /* <-- fade level */
+            filter: blur(4px);        /* <-- optional background blur */
+            
+            z-index: 0;
+        }
+
+        #next-release-box > * {
+            position: relative;
+            z-index: 1; /* text stays above image */
+        }
+
+        #next-title {
+            margin: 0 0 5px 0;
+            font-size: 1.4em;
+        }
+
+        #countdown {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        #next-release-box::before {
+            background-image: var(--bg-img);
+        }
+
+        .image-container {
+            position: relative;
+        }
+
+        .release-date {
+            position: absolute;
+            bottom: 13px;
+            right: 6px;
+            font-size: 0.85em;
+            color: #DBB900; /* Bright gold color */
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4); /* Softer shadow to enhance contrast */
+            z-index: 20;
+        }        
+
+        /* --- 2. Main Filter Group: Centered Block Wrapper --- */
+        #filter-buttons-group {
+            /* REMOVED: flex-grow: 1; - Using calc() instead for fixed width */
+            
+            /* Calculate the width: 
+               100% of the container - (width of filter-status + gap) 
+               I'm estimating filter-status is about 150px wide, and the gap is 15px. */
+               width: calc(100% - 165px); 
+
+               /* Ensure there is a gap between the filter buttons and the status area */
+               margin-right: 15px; 
+
+               /* Keep centering the filter rows */
+               text-align: center;
+               margin-top: 0; /* Adjusted for clarity */
+           }
+
+           /* * 3. Positioning the Clear Button and Count * */
+           #filter-status {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            gap: 0;
+            
+            /* Set a fixed width to support the width calculation above */
+            width: 150px; 
+            
+            /* Ensure this group stays on the right */
+            flex-shrink: 0; 
+        }
+        /* * 4. Styling the Game Count Element (Keep this section) * */
+        #game-count {
+            /* Add a little space between the button and the count */
+            margin-top: 5px; 
+            
+            /* Keep your existing styling */
+            color: white; 
+            border: 1px solid white;
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-size: 0.9em;
+            white-space: nowrap; 
+        }
+
+        /* * 5. Clear Button * */
+        #clear-all-btn {
+            /* Ensure the button aligns with the center of the column */
+            align-self: center; 
+            
+            /* Remove conflicting margin settings */
+            margin-left: 0;
+            margin-right: 0;
+            margin-top: 4px; /* Keep this to align it better with the filter rows */
+            
+            /* Keep existing styling... */
+            flex-shrink: 0; 
+            background-color: #f8d7da; 
+            border-color: #f5c6cb;
+            color: #721c24; 
+            position: static; 
+        }
+
+        /* --- Existing Button Styles --- */
+        .filter-btn {
+            background-color: #ffffff;
+            border: 1px solid #ccd0d5;
+            border-radius: 18px;
+            padding: 10px 20px;
+            margin: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        /* Style for a button when it IS toggled on */
+        .filter-btn.active {
+            background-color: #276CF5;
+            color: #ffffff;
+            border-color: #276CF5;
+        }
+        /* Style for a button when it IS toggled Off */
+        .filter-btn.exclude {
+            background-color: #FF007B;
+            color: #ffffff;
+            border-color: #FF007B;
+        }
+        
+        .filter-btn:hover:not(.active) {
+            background-color: #f5f5f5;
+        }
+
+        .filter-btn:hover:not(.exclude) {
+            background-color: #f5f5f5;
+        }     
+
+        /* --- Existing Button Styles --- */
+        .release-filter-btn {
+            background-color: #ffffff;
+            border: 1px solid #ccd0d5;
+            border-radius: 18px;
+            padding: 10px 20px;
+            margin: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        /* Style for a button when it IS toggled on */
+        .release-filter-btn.active {
+            background-color: #7EB626;
+            color: #ffffff;
+            border-color: #6C9C22;
+        }
+        
+        .release-filter-btn:hover:not(.active) {
+            background-color: #f5f5f5;
+        }
+
+        /* Ensure the clear button doesn't accidentally get the blue active style */
+        #clear-all-btn.active {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+
+        /* 1. Flexbox for Alignment (Clear Button & Count)
+         * We target the new wrapper to put the items side-by-side. */
+         #filter-status {
+            display: flex;
+            /* Aligns the count text vertically with the button */
+            align-items: center; 
+            /* Adds a small space between the button and the count */
+            gap: 15px;
+        }
+
+        /* 2. Styling the Game Count Element
+         * Applies the requested rounded outline and white text.*/
+         #game-count {
+            /* White text and border */
+            color: white; 
+            border: 1px solid white;
+            
+            /* Rounded corners */
+            border-radius: 12px;
+            
+            /* Padding for spacing inside the border */
+            padding: 4px 10px;
+            
+            /* Optionally set the font size */
+            font-size: 0.9em;
+            
+            /* Ensures the text doesn't wrap */
+            white-space: nowrap; 
+        }
+
+        /* Optional: Ensure the main control row can accommodate the space.
+         * If your entire control row is using a layout like flex or grid, 
+         * you may need minor adjustments to the parent of #filter-status.*/
+         #filter-controls-row {
+            /* Example: If you want the buttons/groups on the left and status on the right */
+            /* display: flex; */
+            /* justify-content: space-between; */
+            /* align-items: flex-start; */
+        }        
+
+        /* Next Release Highlight Box */
+        #next-release-box {
+            position: relative;
+            overflow: hidden;
+
+            background: #1c2a3a;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+
+            border-left: 4px solid #4CAF50;
+            display: none;
+
+            backdrop-filter: blur(5px);
+        }
+
+        #next-release-box::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+
+            background-size: cover;
+            background-position: center;
+            opacity: 0.25;            /* <-- fade level */
+            filter: blur(4px);        /* <-- optional background blur */
+            
+            z-index: 0;
+        }
+
+        #next-release-box > * {
+            position: relative;
+            z-index: 1; /* text stays above image */
+        }
+
+        #next-title {
+            margin: 0 0 5px 0;
+            font-size: 1.4em;
+        }
+
+        #countdown {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        #next-release-box::before {
+            background-image: var(--bg-img);
+        }
+
+        .image-container {
+            position: relative;
+        }
+
+        .release-date {
+            position: absolute;
+            bottom: 13px;
+            right: 6px;
+            font-size: 0.85em;
+            color: #DBB900; /* Bright gold color */
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4); /* Softer shadow to enhance contrast */
+            z-index: 20;
+        }
+
+
+/* --- Snazzy Demo Icon Style (Smaller Green Badge) --- */
+.demo-icon {
+    position: absolute;
+    /* Adjusted position for the smaller size and rotation */
+    top: 10px; 
+    left: 0px; 
+    
+    /* NEW: Green Gradient Background */
+    background: linear-gradient(135deg, #A8E063, #56AB2F); /* Light Green to Dark Green */
+    color: #004d00; /* Darker green text for high contrast */
+    border: 2px solid white; 
+    
+    /* NEW: Smaller Shape and spacing */
+    padding: 2px 5px; /* Reduced padding */
+    border-radius: 4px;
+    
+    /* NEW: Smaller Typography */
+    font-size: 0.65em; /* Reduced font size */
+    font-weight: 900; 
+    line-height: 1.1;
+    text-transform: uppercase;
+    
+    /* Retaining the snazzy rotation and shadow */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4); 
+    transform: rotate(-8deg); 
+    
+    z-index: 50; 
+}
+
+/* --- Stacked Text Style --- */
+.demo-icon span {
+    display: block; 
+    text-align: center; 
+}
+
+/* --- 2. Game Grid --- */
+#game-grid {
+    display: grid;
+    /* This creates the 4-wide grid as requested */
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.game-item {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+
+    /* ORIGINAL: border: 1px solid transparent; */
+    border-right: 4px solid var(--profile-color, transparent); /* NEW dynamic border */
+    border-bottom: 4px solid var(--profile-color, transparent); /* NEW dynamic border */
+    border-top: 1px solid transparent; /* Keep other borders thin/invisible */
+    border-left: 1px solid transparent; /* Keep other borders thin/invisible */
+
+    transition: all 0.3s ease;
+}
+
+
+.game-item .image-container {
+    position: relative;
+    /* Ensure no extra space below the image */
+    line-height: 0; 
+}
+
+/* This is the class JavaScript will add/remove */
+.game-item.hide {
+    transform: scale(0.9);
+    opacity: 0;
+    display: none; /* Fallback and final state */
+}
+.game-item img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.game-item h3 {
+    position: absolute; /* Takes it out of the normal flow */
+    bottom: 0;         /* Positions it at the bottom of .image-container */
+    left: 0;           /* Starts at the left edge */
+    width: 100%;       /* Spans the full width */
+
+    min-height: 15px;
+
+    /* Semi-transparent background (RGB for black, A for alpha/opacity) */
+    background-color: rgba(0, 0, 0, 0.7); 
+
+    /* Text styling */
+    color: white;
+    padding: 10px;
+    margin: 0; /* Remove default margin from h3 */
+    font-size: 1.1em;
+    font-weight: normal;
+
+    /* FIX FOR AUTO-RESIZING (TRUNCATION)  */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+
+    /* Use flexbox to position the title and the button */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease-in-out; /* Smooth transition */
+    z-index: 20; /* Ensure H3 is above expanded content */
+
+}
+
+
+
+
+/* Style for the Expand Button (your "little icon") */
+.expand-btn {
+    background: none;
+    border: 1px solid white;
+    color: white;
+    border-radius: 50%;
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    font-size: 10px;
+    line-height: 1;
+    text-align: center;
+    margin: 0px 15px;
+    background-color: rgba(0, 0, 0, 0); 
+}        
+
+/* STYLES FOR THE EXPANDED STATE */
+/* ---------------------------------------------------- */
+/* 1. Initially hide the expanded paragraph content */
+.expanded-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 10; /* Ensure it's under the H3 overlay initially */
+    line-height: 1.5;
+
+    /* Content styling */
+    color: white;
+    padding: 10px 15px;
+    box-sizing: border-box;
+}
+
+/* 2. When the .game-item has the .is-expanded class, show the content */
+.game-item.is-expanded .expanded-content {
+    background-color: rgba(0, 0, 0, 0.9); /* Full background coverage with transparency */
+    opacity: 1;
+    visibility: visible;
+    padding-top: 40px;
+    z-index: 30; /* Bring it to the top */
+}
+
+/* 3. Also, move the H3 element out of the way for the expanded view */
+.game-item.is-expanded h3 {
+    background-color: transparent;
+    bottom: calc(100% - 44px); /* Moves the bar to the top of the container */
+    padding: 10px 15px;
+
+    z-index: 40;
+    background-color: rgba(0, 0, 0, 0); 
+}
+/* --- Responsive Design --- */
+/* On smaller screens, go from 4-wide to 2-wide */
+@media (max-width: 900px) {
+    #game-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* On very small screens, stack them */
+@media (max-width: 500px) {
+    #game-grid {
+        grid-template-columns: 1fr;
+    }
+}
+/* --- Expanded Hero Panel Styles --- */
+
+.details-panel {
+    grid-column: 1 / -1;
+    position: relative; /* Needed for absolute positioning of the image */
+    background-color: #0f1826; /* Matches your body dark blue/black */
+    border: 1px solid #276CF5;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+    color: white;
+    min-height: 300px; /* Ensure height for the image */
+    overflow: hidden; /* Crops the image if it's too big */
+    
+    /* Flexbox for the TEXT content only */
+    display: flex;
+    align-items: center; 
+    
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: slideDown 0.3s ease-out forwards;
+}
+
+/* The Faded Hero Image */
+.details-hero-bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 70%; /* Covers the right 70% of the panel */
+    
+    background-size: cover;
+    background-position: center center;
+    z-index: 0; /* Puts it behind the text */
+    
+    /* The Magic: Linear Gradient Mask makes it fade from transparent (left) to opaque (right) */
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 60%);
+    mask-image: linear-gradient(to right, transparent 0%, black 60%);
+    
+    opacity: 0.8; /* Slight transparency to blend better */
+    transition: opacity 0.3s ease;
+}
+
+/* The Content Wrapper */
+.details-panel-content {
+    position: relative;
+    z-index: 1; /* Puts text ON TOP of the image */
+    width: 50%; /* Restricts text to the left half */
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8); /* Ensures text is readable over busy images */
+}
+
+/* Typography updates */
+.details-panel h2 {
+    font-size: 2.5em;
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: white;
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(39, 108, 245, 0.6); /* Blue glow */
+}
+
+.details-panel .game-desc {
+    font-size: 1.1em;
+    line-height: 1.6;
+    color: #e0e0e0;
+    margin-bottom: 25px;
+}
+
+/* Stats Grid - made semi-transparent background */
+.details-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    background: rgba(0, 0, 0, 0.6); /* Darker backdrop for readability */
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(5px); /* Nice blur effect behind stats */
+}
+
+.stat-item strong {
+    display: block;
+    color: #276CF5;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; height: 0; margin-bottom: 0; }
+    to { opacity: 1; height: auto; margin-bottom: 20px; }
+}
+
+/* Responsive: On mobile, just darken the image and stack */
+@media (max-width: 768px) {
+    .details-panel-content { width: 100%; }
+    .details-hero-bg { 
+        width: 100%; 
+        -webkit-mask-image: linear-gradient(to bottom, transparent, black);
+        mask-image: linear-gradient(to bottom, transparent, black);
+        opacity: 0.3; /* Dim it more on mobile so text is readable */
+    }
+}
+/* Style for the hamburger icon button */
+.hamburger-menu {
+    position: fixed; /* Keep it visible even when scrolling */
+    top: 20px;
+    left: 20px;
+    z-index: 1000; /* Ensure it's on top of everything */
+    font-size: 24px;
+    background: #333;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    /* MODIFIED: Added transition for the push animation */
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Style for the sidebar itself */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 300px; /* Width of the menu */
+    background-color: #2c3e50; /* Dark background */
+    color: white;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    padding: 20px;
+    box-sizing: border-box;
+
+    /* Initially hide the menu off-screen to the left */
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+}
+
+/* MODIFIED: Class is now on the BODY, not the sidebar */
+body.sidebar-is-open .sidebar {
+    transform: translateX(0);
+}
+
+/* Style for the Close Button */
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+}
+
+/* Sidebar Content Styling */
+.sidebar h2 {
+    margin-top: 60px;
+    font-size: 1.3em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+.sidebar .faq-section h4 {
+    margin-top: 15px;
+    margin-bottom: 5px;
+}
+.sidebar .faq-section p {
+    font-size: 0.9em;
+    line-height: 1.4;
+    color: #ccc;
+}
+
+/* NEW STYLES FOR PUSH CONTENT (MODIFIED) */
+/* ------------------------------------------- */
+#main-content {
+    /* This wrapper holds all the content that gets pushed */
+    padding: 24px; /* Moved from body */
+    transition: margin-left 0.3s ease-in-out;
+    margin-left: 0; /* Base state */
+}
+
+/* When the sidebar is open, push the main content */
+body.sidebar-is-open #main-content {
+    margin-left: 300px;
+}
+
+/* When the sidebar is open, push the hamburger menu */
+body.sidebar-is-open .hamburger-menu {
+    /* Use transform for smoother animation */
+    transform: translateX(300px);
+}
+
+/* Scroll to Top */
+/* ------------------------------------------- */
+#scrollToTopBtn {
+    /* Fixed position keeps it in the same place when scrolling */
+    position: fixed; 
+
+    /* Position it slightly up from the bottom */
+    bottom: 20px; 
+
+    /* Center it horizontally */
+    left: 50%;
+    transform: translateX(-50%); 
+
+    /* Styling */
+    display: none; /* Initially hide the button */
+    background-color: #007bff; /* Use your primary color */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Make it circular */
+    padding: 15px 20px;
+    font-size: 20px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.3s, background-color 0.3s;
+    z-index: 1000; /* Ensure it stays above other content */
+}
+
+#scrollToTopBtn:hover {
+    opacity: 1;
+    background-color: #0056b3;
+}
+
+/* --- A. Tooltip Container (The Button) --- */
+/* Set the parent button to be the positioning context */
+.has-tooltip {
+    position: relative; /* CRITICAL: All child tooltips are positioned relative to this button */
+}
+
+/* --- B. Tooltip Text (The actual content) --- */
+.tooltip-text {
+    /* Hiding by default */
+    visibility: hidden;
+    opacity: 0;
+
+    /* Positioning and Style */
+    width: 150px; /* Adjust width as needed */
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 8px 10px;
+    border-radius: 6px;
+    z-index: 1000; /* Ensure it's on top of other content */
+
+    /* Absolute Positioning relative to the button */
+    position: absolute;
+    top: 125%; /* Position above the button */
+    left: 50%;
+    margin-left: -75px; /* Half of the width (150px) to center it */
+
+    /* Animation and Delay */
+    transition: opacity 0.3s, visibility 0.3s; /* Smooth fade effect */
+    transition-delay: .5s; /* *** THIS CREATES THE 1-SECOND DELAY *** */
+}
+
+/* Optional: Add a small arrow/tail */
+.tooltip-text::after {
+    content: "";
+    position: absolute;
+    bottom: 100%; /* At the bottom of the tooltip */
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #333 transparent;
+}
+
+/* --- C. Show on Hover --- */
+.has-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+    /* When the mouse hovers, we reset the delay so it shows instantly */
+    transition-delay: .8s;
+}
+
+/* Optional: Add a delay to hide it gracefully when the mouse moves out */
+.has-tooltip:not(:hover) .tooltip-text {
+    transition-delay: 0s 0.2s; /* Hides immediately, but has a slight fade */
+}
+
+/* Container for the two bottom buttons */
+#bottom-buttons {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 40px;
+}
+
+/* Base button styling */
+.bottom-btn {
+    flex: 1;
+    padding: 20px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    text-align: center;
+    color: white;
+    background: #283a5c;
+    text-decoration: none;
+    transition: 0.25s;
+    position: relative;
+
+    /* ---- ANIMATION START VALUES ---- */
+    opacity: 0; /* invisible before animation */
+}
+
+/* Space between left and right */
+.bottom-btn + .bottom-btn {
+    margin-left: 10px;
+}
+
+/* Hover */
+.bottom-btn:hover {
+    background: #1b4eb3;
+}
+
+/* ---- INVERTED CURVE USING MASK ---- */
+
+/* CURVE SIZE — adjust this to match your circular button */
+:root {
+    --cutout-radius: 32px;
+    --cutout-offset: 63%; /* vertical offset */
+}
+
+/* Left button curves inward on right side */
+.bottom-btn.left {
+    mask:
+    radial-gradient(circle var(--cutout-radius) at right var(--cutout-offset),
+        transparent 98%, black 100%);
+    -webkit-mask:
+    radial-gradient(circle var(--cutout-radius) at right var(--cutout-offset),
+        transparent 98%, black 100%);
+}
+
+/* Right button curves inward on left side */
+.bottom-btn.right {
+    mask:
+    radial-gradient(circle var(--cutout-radius) at left var(--cutout-offset),
+        transparent 98%, black 100%);
+    -webkit-mask:
+    radial-gradient(circle var(--cutout-radius) at left var(--cutout-offset),
+        transparent 98%, black 100%);
+}
+
+/* REMOVE slide-in animation — buttons are fully visible always */
+.bottom-btn {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: background-color 0.25s ease; /* keep hover fade only */
+}
+
+/* Default equal buttons */
+#bottom-buttons .bottom-btn {
+    flex: 1;
+    transition: flex-basis 0.4s ease;
+}
+
+/* Keep sidebar resizing behavior */
+body.sidebar-open #bottom-buttons .bottom-btn.left {
+    flex: 0 0 40.05%;
+}
+
+body.sidebar-open #bottom-buttons .bottom-btn.right {
+    flex: 0 0 59.95%;
+}
+
+body.sidebar-open .hamburger-menu {
+    visibility: hidden;
+}
+
+
+</style>
+</head>
+<body>
+    <button id="menu-toggle" class="hamburger-menu" aria-expanded="false" aria-controls="sidebar-menu">
+        &#9776; 
+    </button>
+
+    <div id="sidebar-menu" class="sidebar">
+        <button class="close-btn" aria-label="Close menu">&times;</button>
+
+        <h2>Robot_ninja_pirate's Page of upcoming VR games</h2>
+
+        <h3>Welcome to the page.</h3>
+        <p>This ia a compiled list of all the upcoming VR games that I think look cool or are with keeping an eye out for.</p>
+
+        <p>This list is a forked section from my larger Google excel spreadsheet of good VR games. <a href="https://docs.google.com/spreadsheets/d/1cnu3R813-RiJv9EPJD54qC7vBCrbh9xALIqz7hl5K-o/edit?gid=2144938032#gid=2144938032" target="_blank">View the full spreadsheet here.</a></p>
+
+        <h3>See also:</h3>
+
+        <p>I also have a list of games Modded into VR <a href="https://rototrobot.github.io/VRMods-List/" target="_blank"> View page here </a></p>     
+        <p>and a Curated list of my top favourite VR games <a href="https://rototrobot.github.io/VR-Games-List/" target="_blank"> View page here </a></p>     
+
+
+        <div class="faq-section">
+        </div>
+    </div>
+
+    <div id="main-content">
+
+        <div id="filter-controls-row">
+            <div id="filter-buttons-group">
+
+                <div class="filter-group">
+                    <button class="filter-btn" data-genre="action">Action</button>
+                    <button class="filter-btn" data-genre="adventure">Adventure</button>
+                    <button class="filter-btn" data-genre="puzzle">Puzzle</button>
+                    <button class="filter-btn" data-genre="rpg">RPG</button>
+                    <button class="filter-btn" data-genre="platformer">Platformer</button>
+                    <button class="filter-btn" data-genre="narrative">Narrative</button>
+                    <button class="filter-btn" data-genre="stealth">Stealth</button>
+                    <button class="filter-btn" data-genre="shooter">Shooter</button>
+                    <button class="filter-btn" data-genre="flight">Flight</button>
+                    <button class="filter-btn" data-genre="horror">Horror</button>
+                    <button class="filter-btn" data-genre="rhythm">Rhythm</button>
+                    <button class="filter-btn" data-genre="roguelike">Roguelike</button>
+                </div>
+
+                <div class="filter-group">
+                    <button class="filter-btn" data-genre="simulation">Simulation</button>
+                    <button class="filter-btn" data-genre="escaperoom">Escape Room</button>
+                    <button class="filter-btn" data-genre="metroidvania">Metroidvania</button>
+                    <button class="filter-btn" data-genre="survival">Survival</button>            
+                    <button class="filter-btn" data-genre="exploration">Exploration</button>
+                    <button class="filter-btn" data-genre="extraction">Extraction</button>    
+                    <button class="filter-btn" data-genre="realtime">Real-Time strategy</button>    
+                    <button class="filter-btn" data-genre="turnbased">Turn-based strategy</button>    
+                    <button class="filter-btn" data-genre="casual">Casual</button>
+                </div>
+
+                <div class="filter-group">
+                    <button class="filter-btn" data-genre="1st">First Person</button>
+                    <button class="filter-btn" data-genre="3rd">Third Person</button>
+                    <button class="filter-btn" data-genre="co-op">Co-op</button>
+                    <button class="filter-btn" data-genre="multiplayer">Multiplayer</button>
+                    <button class="filter-btn has-tooltip" data-genre="asymmetrical" data-tooltip="My Personal top-rated and selected games.">
+                        Asymmetrical
+                        <span class="tooltip-text">One player plays in VR the other on the computer screen.</span>
+                    </button>     
+
+                    <div class="filter-group" id="release-filter-group">
+                        <button class="release-filter-btn" data-release="this-month">This Month</button>
+                        <button class="release-filter-btn" data-release="next-month">Next Month</button>
+                        <button class="release-filter-btn" data-release="this-year">This Year</button>
+                        <button class="release-filter-btn" data-release="next-year">Next Year</button>
+                        <button class="release-filter-btn" data-release="beyond">Beyond</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="filter-status">
+                <button id="clear-all-btn" class="filter-btn">Clear Filters</button>
+                <span id="game-count"></span>
+                <button id="sort-toggle-btn">Sorting Release Date</button>
+            </div>
+
+        </div>
+
+        <div id="next-release-box">
+            <h2 id="next-title"></h2>
+            <div id="countdown"></div>
+        </div>
+
+        <div id="game-grid">
+
+            <div class="game-item" data-tags="action adventure roguelite 1st" data-release="2025-12-18" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/2782960/Crossings/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2782960/1390276b90385c0d4e48efdfe69d1b2b55fe2eb8/header.jpg?t=1764958239" alt="Beat Saber">
+                        <h3>Crossings</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2782960/bbb8fa60b1da7594184c8ed1781401ce69432187/ss_bbb8fa60b1da7594184c8ed1781401ce69432187.1920x1080.jpg?t=1764958239</span>
+
+                    <span class="data-desc">Explore and Fight your way through an ever-changing world in a quest for vengeance and survival in an epic Adventure through the Norse afterlife. Meet fellow lost souls in seamless and wordless VR Co-op as you Block, Dodge, Strike and Power your way through Trolls, Draugr and other dark beings.</span>
+                    <span class="data-genres">Action, Adventure, Roguelite</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
+
+
+
+
+            <div class="game-item" data-tags="horror action shooter 1st" data-release="2026-Q1" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/3574740/MEMOREUM/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3574740/3d60e96dfdcb8e6c9e5540472c01c446290df6ec/header.jpg?t=1757952804" alt="MEMOREUM">
+                        <h3>MEMOREUM</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3574740/fbc24f9f8ec194d7dabd60e16b38a287e401e8c0/ss_fbc24f9f8ec194d7dabd60e16b38a287e401e8c0.1920x1080.jpg?t=1765330807</span>
+                    <span class="data-desc">Fight the Ichor Infection on a space ship as Dr. Otto Hudson, unraveling the sci-fi mystery of the outbreak while your fragmented mind slips from reality. A VR action horror campaign.</span>
+                    <span class="data-genres">Horror, Action, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="simulation flight action multiplayer 1st" data-release="2025" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/2754090/Aces_of_Thunder/">
+                    <div class="image-container">
+                        <img src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2754090/ab9579cc5f6d57d52a96081f11b8e6bb6cbeb99a/header.jpg?t=1764011596" alt="Aces of Thunder">
+                        <h3>Aces of Thunder</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2754090/ss_7e780297dbb3b6afb572e34eada04d666151665f.1920x1080.jpg?t=1765190374</span>
+                    <span class="data-desc">VR flight simulation with high-fidelity graphics and realistic flight models. Fly over 20 iconic WW1 & WW2 aircraft in intense dogfights across single-player and multiplayer modes.</span>
+                    <span class="data-genres">Simulation, Flight, Action</span>
+                    <span class="data-multiplayer">Yes (PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="shooter action co-op 1st" data-release="2026-Q1" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/3549390/EXOSHOCK/">
+                    <div class="image-container">
+                        <img src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/3549390/03f4a4e793f7b104e5a94377099cce87d29fc902/header.jpg?t=1763423365" alt="EXOSHOCK">
+                        <h3>EXOSHOCK</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3549390/13d65a2b187f380991c5ab2b30044ae23d0b1ef7/ss_13d65a2b187f380991c5ab2b30044ae23d0b1ef7.1920x1080.jpg?t=1763423365</span>
+                    <span class="data-desc">A cooperative sci-fi shooter built exclusively for VR. Engage in intense 1-4 player PvE firefights against adaptive AI using squad tactics on dynamic, ever-changing battlefields.</span>
+                    <span class="data-genres">Shooter, Action</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="shooter action stealth 1st" data-release="TBA" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/2421750/Gunman_Contracts__Stand_Alone/">
+                    <div class="image-container">
+                        <img src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2421750/485415c36bcefe36cbed8d8cef7d1b1eb2169c83/header.jpg?t=1763239914" alt="Gunman Contracts - Stand Alone">
+                        <h3>Gunman Contracts - Stand Alone</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2421750/c797efad55f2fe18770a78fd30e383deecc2f81b/ss_c797efad55f2fe18770a78fd30e383deecc2f81b.1920x1080.jpg?t=1763239914</span>
+                    <span class="data-desc">Action-movie inspired shooter playable in both VR and flatscreen modes. Play as a professional hitman taking on the criminal underworld to serve justice through a series of intense contracts.</span>
+                    <span class="data-genres">Shooter, Action, Stealth</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure exploration action shooter 1st" data-release="2026" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/4139020/AUTOMA/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4139020/c25b3c588be87199f8ead73978b360098d4ae7b9/header.jpg?t=1764957228" alt="AUTOMA">
+                        <h3>AUTOMA</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4139020/83b233602ae9d346dfcd1ca40423681613e41a68/ss_83b233602ae9d346dfcd1ca40423681613e41a68.1920x1080.jpg?t=1765822992</span>
+                    <span class="data-desc">A story-driven VR action-adventure in a near-future city seized by autonomous AI. Exploration and physical interactions are key as you grapple with a desperate deal made to protect your family.</span>
+                    <span class="data-genres">Action Adventure, Exploration, shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="horror survival exploration 1st" data-release="TBA" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/3753140/BRAMBLEFORT/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3753140/46d1f3959d29dc4db1ec7da76bf17cb1f4a4429a/header.jpg?t=1760136725" alt="BRAMBLEFORT">
+                        <h3>BRAMBLEFORT</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3753140/003c45787fcaf0937e0d959b4c6c8acd3f5a9d80/ss_003c45787fcaf0937e0d959b4c6c8acd3f5a9d80.1920x1080.jpg?t=1760136725</span>
+                    <span class="data-desc">VR survival horror game set on a desolate North Atlantic island. Features weighty, location-based combat and high replayability driven by player choice in how they navigate and tackle enemies.</span>
+                    <span class="data-genres">Horror, Survival, Exploration</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="horror stealth puzzle port 1st" data-release="2026-03" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/4005370/Maid_of_Sker_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4005370/b7e3ff178d31d4b365474f1f6dc9ef0c26bf5a4f/header.jpg?t=1762521712" alt="Maid of Sker VR">
+                        <h3>Maid of Sker VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4005370/5623855cfe315b84e7fc3e7d535c2fb86f67ed01/ss_5623855cfe315b84e7fc3e7d535c2fb86f67ed01.1920x1080.jpg?t=1762521712</span>
+                    <span class="data-desc">A first-person survival horror set in a remote hotel in 1898 Wales. Brave the nightmares of the Quiet Ones using stealth and a defensive sound device to avoid sound-based AI enemies.</span>
+                    <span class="data-genres">Horror, Stealth, Puzzle</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action flight simulation 1st" data-release="TBA" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/2445980/GRebels/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2445980/f224277541292b5bfae49d97fcc421ef8c36d47f/header.jpg?t=1762325840" alt="G-Rebels">
+                        <h3>G-Rebels</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2445980/ss_ecaad3c82991d67835c710b2d49b2044f7f364bb.1920x1080.jpg?t=1764588122</span>
+                    <span class="data-desc">High-octane space dogfighting and flight simulation with realistic physics. Pilot iconic sci-fi spacecraft in intense campaigns and multiplayer arenas.</span>
+                    <span class="data-genres">Action, Flight, Simulation</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle escaperoom port co-op 1st" data-release="TBA" data-high-profile="1">
+                <a href="https://store.steampowered.com/app/2879840/Escape_Simulator_2/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2879840/f1f548311fadd53263adca4647e380eaa75588c6/header.jpg?t=1761724381" alt="Escape Simulator 2">
+                        <h3>Escape Simulator 2</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2879840/0c1171c0b7fa863f976cf919fd6fc60ebaed193a/ss_0c1171c0b7fa863f976cf919fd6fc60ebaed193a.1920x1080.jpg?t=1761724381</span>
+                    <span class="data-desc">The sequel to the co-op puzzle room experience. Work together with friends to solve intricate puzzles and escape highly detailed, interactive rooms.</span>
+                    <span class="data-genres">Puzzle, Escaperoom</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure narrative puzzle 3rd" data-release="TBA" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/3411260/Wallace__Gromit_in_The_Grand_Getaway/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3411260/header.jpg?t=1737365137" alt="Wallace & Gromit in The Grand Getaway">
+                        <h3>Wallace & Gromit in The Grand Getaway</h3>
+                        <div class="release-date">TBA</div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3411260/ss_2f3f6f955e33840d690a9975ae8de2f910079ede.1920x1080.jpg?t=1737365137</span>
+                    <span class="data-desc">Join Wallace & Gromit on an unintended adventure to Mars in this narrative-driven, third-person VR experience. Solve inventive puzzles and enjoy classic stop-motion humor.</span>
+                    <span class="data-genres">Adventure, Narrative, Puzzle</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="shooter action port 1st" data-release="2026-Q1" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/3430260/Wrath_Aeon_of_Ruin_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3430260/header.jpg?t=1758584177" alt="Wrath: Aeon of Ruin VR">
+                        <h3>Wrath: Aeon of Ruin VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3430260/ss_f0e88d4f09435feea34e18131a159955142ca571.1920x1080.jpg?t=1758584177</span>
+                    <span class="data-desc">A brutal old-school FPS built in the legendary Quake engine and reimagined for VR. Hunt corrupted Guardians with dual-wielding combat and deadly artifacts.</span>
+                    <span class="data-genres">Shooter, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="shooter horror port action adventure 1st" data-release="TBA" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/2208350/Total_Chaos/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2208350/f2086b3eef4ec934190e5faec66b0a21ae734a1a/header.jpg?t=1763666480" alt="Total Chaos">
+                        <h3>Total Chaos</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2208350/b20d868407dcff26d8138cc9f2a5579c24f771d4/ss_b20d868407dcff26d8138cc9f2a5579c24f771d4.1920x1080.jpg?t=1765824238</span>
+                    <span class="data-desc">A gripping survival-horror experience set in a decaying island nightmare. Scavenge to craft weapons and unravel the chilling mystery of Fort Oasis's fate.</span>
+                    <span class="data-genres">Horror, Survival, Action Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="shooter horror action 1st" data-release="2025-Q4" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/3814060/The_Warp__Cephisso/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3814060/b9ad635fd0581f75bd265af2eb79acb7450781af/header.jpg?t=1752740540" alt="The Warp - Cephisso">
+                        <h3>The Warp - Cephisso</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3814060/c7b771a7176924f3a901e2897e0cc22bcc7429ab/ss_c7b771a7176924f3a901e2897e0cc22bcc7429ab.1920x1080.jpg?t=1752740540</span>
+                    <span class="data-desc">Dark, atmospheric VR sci-fi shooter set aboard an infested deep-space vessel. Wield a powerful bolt-action handgun and manually reload under intense pressure.</span>
+                    <span class="data-genres">Shooter, Horror, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure shooter 1st port" data-release="TBA" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/3534150/POSTAL_2_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3534150/header.jpg?t=1744133263" alt="POSTAL 2 VR">
+                        <h3>POSTAL 2 VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3534150/4e606d294e5eb75e732dafa9b3cff5c008ade469/ss_4e606d294e5eb75e732dafa9b3cff5c008ade469.1920x1080.jpg?t=1765309196</span>
+                    <span class="data-desc">The chaotic open-world shooter fully reimagined for VR. Survive a week in Paradise, Arizona, with manual weapon handling and an arsenal of absurd weapons.</span>
+                    <span class="data-genres">Action Adventure, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure casual 1st" data-release="2026-Q3" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/3552090/Penguin_Festival/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3552090/9ee9a6e578caafbb04447c46b28a7e56cbab4939/header.jpg?t=1763054603" alt="Penguin Festival">
+                        <h3>Penguin Festival</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3552090/ebcf70f9a1c559b75dcce5ae586db5964f038758/ss_ebcf70f9a1c559b75dcce5ae586db5964f038758.1920x1080.jpg?t=1763054603</span>
+                    <span class="data-desc">Play as a penguin helping your community prepare for an annual festival. Explore a vibrant town and enjoy fun, relaxing side activities with physics-based VR mechanics.</span>
+                    <span class="data-genres">Casual, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
+            <div class="game-item" data-tags="action adventure shooter horror narrative 1st" data-release="2026-01" data-high-profile="3">
+                <a href="https://store.steampowered.com/app/3843700/Dread_Meridian/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3843700/a25f47abea46b9605d920d6bbd53777346393569/header.jpg?t=1760697580" alt="Dread Meridian">
+                        <h3>Dread Meridian</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3843700/96bfbc90ba187fbee598a3a3bcdaaf6851fa0ce7/ss_96bfbc90ba187fbee598a3a3bcdaaf6851fa0ce7.1920x1080.jpg?t=1764957804</span>
+                    <span class="data-desc">An original VR survival horror inspired by Lovecraft's work. Search for your twin in Oglanbyen's frozen wasteland, facing betrayal and mutated researchers.</span>
+                    <span class="data-genres">Action Adventure, Survival Horror, Shooter</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure puzzle exploration 1st" data-release="TBA" data-high-profile="3">
+                <a href="https://store.steampowered.com/app/3722560/Beyond_a_Coral_Sea__Part_two/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3722560/376b93540d27e65e71cc0898fb9e3746f8d9e1d0/header.jpg?t=1747165511" alt="Beyond a Coral Sea - Part two Header Image">
+                        <h3>Beyond a Coral Sea - Part two</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3722560/da6850c5a30de16e5d8ebda5a1a0be094c1c0716/ss_da6850c5a30de16e5d8ebda5a1a0be094c1c0716.1920x1080.jpg?t=1747165511</span>
+                    <span class="data-desc">Continue your mysterious Pacific island adventure. Explore immersive historical environments, solve puzzles, and uncover the protagonist's past and an ancient story.</span>
+                    <span class="data-genres">Adventure, Puzzle, Exploration</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action roguelike shooter 1st" data-release="2026-03" data-high-profile="3">
+                <a href="https://store.steampowered.com/app/3143930/PROTON_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3143930/0d837eec8e6b82ed34b6b0628f22edb85fd91d6f/header.jpg?t=1762559289" alt="PROTON VR Header Image">
+                        <h3>PROTON VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3143930/ss_f11efc18c9f1e63084d62f318b41a74e80dcef85.1920x1080.jpg?t=1762559289</span>
+                    <span class="data-desc">A retro roguelike shooter inspired by 90s action movies. Customize over 30 guns and gadgets to fight cyborgs and robots in procedurally generated levels.</span>
+                    <span class="data-genres">Shooter, Roguelike, Action</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="narrative adventure 1st" data-release="2026" data-high-profile="3">
+                <a href="https://store.steampowered.com/app/3867610/The_Amusement/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3867610/a4d94bfaa1ed8ac98bd2357f5349525f3ac315b3/header.jpg?t=1764751690" alt="The Amusement">
+                        <h3>The Amusement</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3867610/77e4c1f98a03f27595e6b1af35b34b84f238dd73/ss_77e4c1f98a03f27595e6b1af35b34b84f238dd73.1920x1080.jpg?t=1764751690</span>
+                    <span class="data-desc">Explore a derelict theme park and solve environmental puzzles to uncover a dark history in this psychological thriller.</span>
+                    <span class="data-genres">Adventure, Narrative</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure co-op 1st" data-release="2026" data-high-profile="3">
+                <a href="https://store.steampowered.com/app/3713650/Teenage_Mutant_Ninja_Turtles_Empire_City/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3713650/eef99122fa25ffd0f6883e02613b11eb44b9590f/header.jpg?t=1759743267" alt="Teenage Mutant Ninja Turtles: Empire City">
+                        <h3>Teenage Mutant Ninja Turtles: Empire City</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3713650/edf26a887d67f0dd06b6ecc95d6d7de665ffe859/ss_edf26a887d67f0dd06b6ecc95d6d7de665ffe859.1920x1080.jpg?t=1765293622</span>
+                    <span class="data-desc">Battle the Foot Clan through the streets and sewers of NYC using iconic ninja weapons and acrobatic combat.</span>
+                    <span class="data-genres">Action, Adventure</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="racing simulation 1st" data-release="TBA" data-high-profile="3">
+                <a href="https://flat2vrstudios.com/projects/flatout-vr/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6220/header.jpg?t=1764590007" alt="Flatout VR">
+                        <h3>Flatout VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/6220/0000001228.1920x1080.jpg?t=1765237361</span>
+                    <span class="data-desc">High-speed destruction derby racing featuring physics-based debris, ragdoll driver ejections, and chaotic tracks.</span>
+                    <span class="data-genres">Racing, Simulation</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure RPG 1st" data-release="2026-02" data-high-profile="3">
+                <a href="https://store.steampowered.com/app/3962020/EXD__Extra_Dimensional/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3962020/b9607a4d63f5480c3a4558cf0f41977606980d6e/header.jpg?t=1764963703" alt="EXD - Extra Dimensional">
+                        <h3>EXD - Extra Dimensional</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3962020/724aaa257b84c7f53d913403498bcd6249f4ba29/ss_724aaa257b84c7f53d913403498bcd6249f4ba29.1920x1080.jpg?t=1765016988</span>
+                    <span class="data-desc">Manipulate dimensions to solve puzzles and engage in shooter combat within shifting, surreal environments.</span>
+                    <span class="data-genres">Action, Adventure, RPG</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle adventure narrative 1st" data-release="2026-Q2" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/3480840/CloserLook_VR_Oldways/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3480840/header.jpg?t=1763309328" alt="CloserLook VR: Oldways">
+                        <h3>CloserLook VR: Oldways</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3480840/ss_31f3eff8cf7d60f60102594f227357b7a11c5db8.1920x1080.jpg?t=1763309328</span>
+                    <span class="data-desc">Examine detailed environments to find clues and solve intricate puzzles in this atmospheric mystery game.</span>
+                    <span class="data-genres">Puzzle, Narrative Adventure</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure survival horror 1st" data-release="TBA" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/3954580/Star_Trek_Infection/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3954580/56bc2d41e38178545b45c2b79262e146e7c628ff/header.jpg?t=1759990295" alt="Star Trek: Infection">
+                        <h3>Star Trek: Infection</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3954580/067abf277d81cede22521f4109ef1290525c0402/ss_067abf277d81cede22521f4109ef1290525c0402.1920x1080.jpg?t=1759990295</span>
+                    <span class="data-desc">Survive a biological outbreak on a Federation ship. Engage in phaser combat and stealth against infected crew.</span>
+                    <span class="data-genres">Action Adventure, Survival Horror </span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action flight 1st" data-release="TBA" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/2922290/Whispers_of_the_Void/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2922290/header.jpg?t=1756113716" alt="Whispers of the Void">
+                        <h3>Whispers of the Void</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2922290/a7179599c00c20f62942dbecec968ad753585557/ss_a7179599c00c20f62942dbecec968ad753585557.1920x1080.jpg?t=1756113716</span>
+                    <span class="data-desc">Pilot a starship through hazardous space sectors, managing systems and engaging in dogfights with alien forces.</span>
+                    <span class="data-genres">Action, Flight</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure 1st" data-release="TBA" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/2268430/Adepts_Arena/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2268430/238fb87bece08f345d8998ab3b1c7728c333bd30/header.jpg?t=1747670812" alt="Adepts Arena">
+                        <h3>Adepts Arena</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2268430/72e82eda76d8a84c01198df0c2d2aa67ceda935f/ss_72e82eda76d8a84c01198df0c2d2aa67ceda935f.1920x1080.jpg?t=1747670812</span>
+                    <span class="data-desc">Cast physics-based spells in arena combat. Master elemental magic to defeat waves of enemies and bosses.</span>
+                    <span class="data-genres">Action, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure narrative flight 1st" data-release="2026-Q1" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/4212870/Alliance_Tales_Battle_for_the_Frontier/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4212870/0b7455ddf822d6d25a951c0049e6b35b7b13ed81/header.jpg?t=1764959451" alt="Alliance Tales: Battle for the Frontier">
+                        <h3>Alliance Tales: Battle for the Frontier</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4212870/57c5ede62b91076dabd5ece47adefd03ff579da8/ss_57c5ede62b91076dabd5ece47adefd03ff579da8.1920x1080.jpg?t=1764959451</span>
+                    <span class="data-desc">A story-driven aerial combat game where you defend the frontier in high-stakes dogfights and missions.</span>
+                    <span class="data-genres">Action Adventure, Flight Narrative</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="simulation shooter action 1st" data-release="TBA" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/2019620/GERONIMO/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2019620/header.jpg?t=1762161298" alt="GERONIMO">
+                        <h3>GERONIMO</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2019620/ss_a7d80580aa717f42216f566e6122424ae91f98d8.1920x1080.jpg?t=1762161298</span>
+                    <span class="data-desc">Tactical CQB shooter emphasizing teamwork, breaching mechanics, and realistic weapon handling in high-threat zones.</span>
+                    <span class="data-genres">Shooter, Simulation, Action</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="narrative adventure 1st" data-release="TBA" data-high-profile="5">
+                <a href="https://store.steampowered.com/app/3129050/Echoes_of_Mora/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3129050/header.jpg?t=1764932763" alt="Echoes of Mora">
+                        <h3>Echoes of Mora</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3129050/86cb11d32de1aebd2202adeff2fe8db4d205c129/ss_86cb11d32de1aebd2202adeff2fe8db4d205c129.1920x1080.jpg?t=1765484673</span>
+                    <span class="data-desc">Explore ruins and piece together the history of a lost civilization in this atmospheric narrative adventure.</span>
+                    <span class="data-genres">Adventure, Narrative</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle adventure casual 1st" data-release="TBA" data-high-profile="5">
+                <a href="https://store.steampowered.com/app/3135540/Starshot/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3135540/b02271a472836e5d87c2a307961642c3993f200c/header.jpg?t=1759898264" alt="Starshot">
+                        <h3>Starshot</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3135540/d7f6e2214bba7f244628ebae8f34ea58b5bf4706/ss_d7f6e2214bba7f244628ebae8f34ea58b5bf4706.1920x1080.jpg?t=1759898264</span>
+                    <span class="data-desc">A casual puzzle adventure involving trajectory and physics mechanics to guide objects through celestial levels.</span>
+                    <span class="data-genres">Puzzle, Adventure, Casual</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="narrative simulation 1st" data-release="TBA" data-high-profile="5">
+                <a href="https://store.steampowered.com/app/4002690/La_Royale__Below_Deck/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4002690/782cc85634704d35ca5f7c1eed25192f3fdf521b/header.jpg?t=1764826829" alt="La Royale : Below Deck">
+                        <h3>La Royale : Below Deck</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4002690/50091dc2e65a5e72b6cabcb9f6f0225442b2fa86/ss_50091dc2e65a5e72b6cabcb9f6f0225442b2fa86.1920x1080.jpg?t=1765726944</span>
+                    <span class="data-desc">Experience life below deck on a naval vessel. Interact with crew and manage systems in this narrative simulation.</span>
+                    <span class="data-genres">Narrative, Simulation</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action RPG co-op 1st" data-release="2026-03" data-high-profile="5">
+                <a href="https://store.steampowered.com/app/3847110/One_More_Delve/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3847110/92f301fa47b1172bea75826da3f2687bd1bf7a7e/header.jpg?t=1764477524" alt="One More Delve">
+                        <h3>One More Delve</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3847110/22bffec033ad1517033ea17137f1dc95f5281acb/ss_22bffec033ad1517033ea17137f1dc95f5281acb.1920x1080.jpg?t=1764477524</span>
+                    <span class="data-desc">Dungeon crawling RPG with physics combat. Loot, level up, and fight through procedural dungeons with friends.</span>
+                    <span class="data-genres">Action, RPG</span>
+                    <span class="data-multiplayer">Yes (Co-Op)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action RPG 1st" data-release="2026-03" data-high-profile="5">
+                <a href="https://store.steampowered.com/app/2908090/VITRIOL/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2908090/12324312ca089acee5afd57d211df0258bb860d0/header.jpg?t=1751969875" alt="VITRIOL">
+                        <h3>VITRIOL</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2908090/ss_bdd3f53602ff63123b9d151e17d83e2930fd5397.1920x1080.jpg?t=1751969875</span>
+                    <span class="data-desc">Dark fantasy RPG featuring alchemy and magic. Craft potions and spells to survive a harsh, corrupted world.</span>
+                    <span class="data-genres">Action, RPG</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action horror shooter 1st" data-release="2026" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3584280/Full_Steam_Undead/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3584280/7a4b79f71a6f5a50b3727c0965ef9304662167e7/header.jpg?t=1763050040" alt="Full Steam Undead">
+                        <h3>Full Steam Undead</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3584280/2d5bc8a3ab33926c12fbb51d4480c2dc3d993cce/ss_2d5bc8a3ab33926c12fbb51d4480c2dc3d993cce.1920x1080.jpg?t=1763050040</span>
+                    <span class="data-desc">Steampunk zombie shooter. Use steam-powered weaponry to fend off hordes of undead in industrial environments.</span>
+                    <span class="data-genres">Action, Horror, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action 1st" data-release="2026-12" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3748780/Tales_Of_Glory_3__Fists_of_Legend/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3748780/68ad3c5aea7907c909e174c4184a4021d6bc38d8/header.jpg?t=1764962619" alt="Tales Of Glory 3 : Fists of Legend">
+                        <h3>Tales Of Glory 3 : Fists of Legend</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3748780/a209052c80a8fc896c68b12be00cbc3d20096c33/ss_a209052c80a8fc896c68b12be00cbc3d20096c33.1920x1080.jpg?t=1765504379</span>
+                    <span class="data-desc">Physics-based melee combat simulator focusing on martial arts and hand-to-hand brawling across various arenas.</span>
+                    <span class="data-genres">Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" horror platformer 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://www.youtube.com/watch?v=9CvZB0nFaoE">
+                    <div class="image-container">
+                        <img src="https://i.imgur.com/9WifqL1.jpeg" alt="Little Nightmares VR: Altered Echoes">
+                        <h3>Little Nightmares VR: Altered Echoes</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/424840/24d7518ab72df4608de04f4ad4bc04ee479e3911/ss_24d7518ab72df4608de04f4ad4bc04ee479e3911.1920x1080.jpg?t=1760535166</span>
+                    <span class="data-desc">Very little is know about this game at the moment.</span>
+                    <span class="data-genres">Horror, Platformer</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action horror 1st" data-release="2026-Q1" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/2116390/Nevrosa_Rescape/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2116390/header.jpg?t=1758123878" alt="Nevrosa: Rescape">
+                        <h3>Nevrosa: Rescape</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2116390/ss_4daf3c8d5a54a13f93ac4525ad3a2ea02bb320ec.1920x1080.jpg?t=1758123878</span>
+                    <span class="data-desc">Psychological horror puzzle game with shooter elements. Escape shifting environments and fight grotesque creatures.</span>
+                    <span class="data-genres">Action, Horror</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action horror shooter multiplayer co-op 1st" data-release="TBA" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3457450/Reave/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3457450/62676e5b78f595be4d6a902042a8f13eebcebcb0/header.jpg?t=1764326772" alt="Reave">
+                        <h3>Reave</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3457450/9e19fb353fbd7a3d2f3ee9c918c81a3cb98c9a7a/ss_9e19fb353fbd7a3d2f3ee9c918c81a3cb98c9a7a.1920x1080.jpg?t=1764326772</span>
+                    <span class="data-desc">Fast-paced co-op shooter. Fight through dark, sci-fi facilities against hordes of monsters with heavy weaponry.</span>
+                    <span class="data-genres">Action, Horror, Shooter</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action horror shooter 1st" data-release="2026-Q3" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/3708210/Xenolocus/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3708210/23574f4efbf3f3b1f71599f8fd091e9a759d7906/header.jpg?t=1765057986" alt="Xenolocus">
+                        <h3>Xenolocus</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3708210/5cdefb483b750972356d1f736e957c4d87d6fa7d/ss_5cdefb483b750972356d1f736e957c4d87d6fa7d.1920x1080.jpg?t=1765587666</span>
+                    <span class="data-desc">Alien survival shooter. Scavenge for resources and defend against extraterrestrial threats in a hostile world.</span>
+                    <span class="data-genres">Action, Horror, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="sports racing 1st" data-release="2026-03-26" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3554630/VMX/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3554630/header.jpg?t=1763836379" alt="VMX">
+                        <h3>VMX</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3554630/9dede82c37a0008f5da0ad490f85566e63d1710e/ss_9dede82c37a0008f5da0ad490f85566e63d1710e.1920x1080.jpg?t=1763836379</span>
+                    <span class="data-desc">Immersive motocross racing. Physics-based bike handling on dirt tracks with big jumps and tight corners.</span>
+                    <span class="data-genres">Simulation, Casual</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="horror exploration 1st" data-release="2026-01-19" data-high-profile="4">
+                <a href="https://store.steampowered.com/app/2121930/GHOST_CAM/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2121930/8613585027b641a378d806102ebf852293e21146/header.jpg?t=1760709697" alt="GHOST CAM">
+                        <h3>GHOST CAM</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2121930/ss_1feb06c54102927c1067344533c25b65dc65bd8b.1920x1080.jpg?t=1765425881</span>
+                    <span class="data-desc">Use a camera to uncover hidden spirits and solve puzzles. An exploration horror game focused on observation.</span>
+                    <span class="data-genres">Horror, Exploration</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure shooter 1st" data-release="2026" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/1367710/Dixotomia/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1367710/header.jpg" alt="Dixotomia">
+                        <h3>
+                            Dixotomia
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1367710/4b3da1a5d4cd890819772701aed4227653c57320/ss_4b3da1a5d4cd890819772701aed4227653c57320.1920x1080.jpg?t=1765461589</span>
+                    <span class="data-desc">An intense, dark first-person shooter blending action and adventure with horror elements in a post-apocalyptic world where you must fight for survival.</span>
+                    <span class="data-genres">Shooter, Action, Adventure</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure platformer stealth 3rd" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/2095030/Slink__Snatch_Tales_of_Thievery/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2095030/header.jpg" alt="Slink & Snatch: Tales of Thievery">
+                        <h3>
+                            Slink & Snatch: Tales of Thievery
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2095030/ss_51e187a0a62ca2312dff817cb45f22e69c6fbae3.1920x1080.jpg?t=1699534632</span>
+                    <span class="data-desc">Embark on a cunning journey as a master thief in a world of rooftop traversal. This third-person experience combines intricate stealth and action platforming.</span>
+                    <span class="data-genres">Stealth, Platformer, Action Adventure</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" adventure exploration flight simulation 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/2098920/Inter_Solar_83/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2098920/header.jpg?t=1761612972" alt="Inter Solar '83">
+                        <h3>
+                            Inter Solar '83
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2098920/f676aeef8a0722582f6b9cc37fba742be7607ac0/ss_f676aeef8a0722582f6b9cc37fba742be7607ac0.1920x1080.jpg?t=1761612972</span>
+                    <span class="data-desc">Pilot your customized starship through the 80s-inspired cosmos. This open-world flight simulation focuses on deep space exploration and trading goods.</span>
+                    <span class="data-genres">Simulation, Exploration, Flight</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" horror narrative 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/3337350/FYR_The_Lost_Island/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3337350/dc59c1d9d15b7970c858689d66311f2442d63128/header.jpg?t=1763113772" alt="FYR: The Lost Island">
+                        <h3>
+                            FYR: The Lost Island
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3337350/fe755744fee102a9b87a59a83c00d45e362afb51/ss_fe755744fee102a9b87a59a83c00d45e362afb51.1920x1080.jpg?t=1763113772</span>
+                    <span class="data-desc">A first-person narrative horror experience where you investigate a terrifying mystery on a remote, lost island with a dark and unsettling history.</span>
+                    <span class="data-genres">Horror, Narrative</span>
+                    <span class="data-multiplayer">No</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" puzzle escaperoom adventure casual 1st" data-release="TBA" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3634040/Mystic_Academy_Escape_Room_VR_Edition/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3634040/04cadb2c671c99fd75af3c0e6497cd49d5d0d810/header.jpg?t=1762352863" alt="Mystic Academy: Escape Room VR Edition">
+                        <h3>
+                            Mystic Academy: Escape Room VR Edition
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3634040/6f701e0d752c2f55e15028a23e5ea1a0d31bfd1c/ss_6f701e0d752c2f55e15028a23e5ea1a0d31bfd1c.1920x1080.jpg?t=1762352863</span>
+                    <span class="data-desc">A collection of immersive escape room puzzles set in a magical academy. Work alone or with friends to solve complex mental challenges and reveal secrets.</span>
+                    <span class="data-genres">Puzzle, Escaperoom, Co-op</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" adventure narrative casual 1st" data-release="2026-05" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/3974640/Moominvalley_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3974640/ea2f6415d5a51d4e31f1ea10f75a866779583c63/header.jpg?t=1761803322" alt="Moominvalley VR">
+                        <h3>
+                            Moominvalley VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3974640/5b3f2459c9a96abdd79ff9d804799568295c5c37/ss_5b3f2459c9a96abdd79ff9d804799568295c5c37.1920x1080.jpg?t=1761803322</span>
+                    <span class="data-desc">Experience the gentle world of Moominvalley in a wholesome, interactive narrative adventure. Explore the environment and interact with iconic characters.</span>
+                    <span class="data-genres">Narrative, Adventure, Casual</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" action horror 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://www.moddb.com/mods/entropy-zero/news/an-update-from-the-breadmen-may-2025">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/714070/header.jpg?t=1732147193" alt="Entropy : Zero VR">
+                        <h3>
+                            Entropy : Zero VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/714070/ss_185692f176d4fccb397d21e381ed3b973a060f34.1920x1080.jpg?t=1732147193</span>
+                    <span class="data-desc">A fan-made action-horror experience set in the Half-Life universe, focusing on intense, close-quarters combat against a backdrop of dark, unsettling environments.</span>
+                    <span class="data-genres">Action, Horror, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" simulation flight action 1st" data-release="2026" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2201470/Remnant_Protocol/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2201470/header.jpg?t=1764873137" alt="Remnant Protocol">
+                        <h3>
+                            Remnant Protocol
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2201470/7beb1750a5ce11f80a5f23f8c7894b30d92b6cc0/ss_7beb1750a5ce11f80a5f23f8c7894b30d92b6cc0.1920x1080.jpg?t=1764873137</span>
+                    <span class="data-desc">Engage in fast-paced space combat and tactical dogfights in this action-packed, futuristic space simulation. Master complex flight controls and weapon systems.</span>
+                    <span class="data-genres">Flight, Action, Simulation</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags=" racing action multiplayer 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1483380/Vertigo_Rush/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1483380/header.jpg?t=1748803773" alt="Vertigo Rush">
+                        <h3>
+                            Vertigo Rush
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1483380/ss_2d5151e6d0ae08178c21dace3d0e3257d5cfad63.1920x1080.jpg?t=1748803773</span>
+                    <span class="data-desc">An intense, zero-gravity racing game focused on high-speed competition and challenging, vertigo-inducing tracks. Compete in multiplayer action across cosmic arenas.</span>
+                    <span class="data-genres">Racing, Action, Multiplayer</span>
+                    <span class="data-multiplayer">Yes (PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action shooter 1st" data-release="TBA" data-high-profile="8"> 
+                <a href="https://store.steampowered.com/app/3103640/Smasher/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/3103640/header.jpg" alt="Smasher">
+                        <h3>
+                            Smasher
+                        </h3>
+                        <div class="release-date"></div> 
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3103640/e01365d00393979d715c83ddb9ee71bf5c6f7b10/ss_e01365d00393979d715c83ddb9ee71bf5c6f7b10.1920x1080.jpg?t=1765396973</span>
+                    <span class="data-desc">An arcade-style cyberpunk VR action shooter blending frantic gunplay and spellcasting across varied arenas with waves of enemies and boss encounters. :contentReference[oaicite:0]{index=0}</span>
+                    <span class="data-genres">Action, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="horror narrative puzzle 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/1996740/Dagger_Woods_VR/">
+                    <div class="image-container"> 
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1996740/header.jpg" alt="Dagger Woods VR"> 
+                        <h3>
+                            Dagger Woods VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1996740/0f512537aa77e95f88178cdbc4812a9f7b60cb35/ss_0f512537aa77e95f88178cdbc4812a9f7b60cb35.1920x1080.jpg?t=1764545513</span>
+                    <span class="data-desc">A psychological thriller in VR where you uncover dark folklore and mystery while solving puzzles and escape-room challenges in haunted woods.</span>
+                    <span class="data-genres">Horror, Narrative, Puzzle</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="sports horror roguelike multiplayer co-op 1st" data-release="2026" data-high-profile="7"> 
+                <a href="https://store.steampowered.com/app/2873750/Pool_of_Madness/"> 
+                    <div class="image-container"> 
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/2873750/header.jpg" alt="Pool of Madness"> 
+                        <h3>
+                            Pool of Madness
+                        </h3> 
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2873750/de964a2497e8e443566576cfa78f576b3e11e34b/ss_de964a2497e8e443566576cfa78f576b3e11e34b.1920x1080.jpg?t=1764060169</span>
+                    <span class="data-desc">A Lovecraftian roguelite blending pool mechanics with shooter elements, rituals, and cosmic horrors — with both PvP and co-op multiplayer options.</span>
+                    <span class="data-genres">Sports, Horror, Roguelike</span>
+                    <span class="data-multiplayer">Yes (Co-op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="sports action simulation 1st" data-release="2026-Q1" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3421520/The_Lists_VR/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3421520/b12fcb76b3efb9e3c85fa91ebe7c1560b029c120/header.jpg?t=1760381379" alt="The Lists VR">
+                        <h3>
+                            The Lists VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3421520/a8fdd6069b6bceffa65526bf799ec9b85a865a90/ss_a8fdd6069b6bceffa65526bf799ec9b85a865a90.1920x1080.jpg?t=1760381379</span>
+                    <span class="data-desc">The Lists VR puts you directly on the tournament field in 15th-century Europe. Compete in a focused, skill-based jousting experience where your body becomes the controller. </span>
+                    <span class="data-genres">Sports, Action, Simulation</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure multiplayer co-op 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/2126860/Reptile_Park_VR/">
+                    <div class="image-container">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/2126860/header.jpg" alt="Reptile Park VR">
+                        <h3>
+                            Reptile Park VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2126860/ss_8c24657c72a9e262b7ef2ec7fe68ae090467abcb.1920x1080.jpg?t=1725010864</span>
+                    <span class="data-desc">A cooperative action-adventure where players explore a dangerous reptile-filled park, complete missions, and survive escalating threats together.</span>
+                    <span class="data-genres">Action, Adventure</span>
+                    <span class="data-multiplayer">Yes (Co-op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action puzzle shooter 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1838730/Warp_Lab/">
+                    <div class="image-container">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1838730/header.jpg" alt="Warp Lab">
+                        <h3>
+                            Warp Lab
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1838730/ss_38d2d1ac3ab9e5acc081f23155155c32188c00ae.1920x1080.jpg?t=1670960574</span>
+                    <span class="data-desc">A fast-paced action puzzle shooter built around teleportation mechanics, spatial problem solving, and skill-based combat encounters.</span>
+                    <span class="data-genres">Action, Puzzle, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="sports action multiplayer 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2521800/VRSO_Bare_Knuckle_Fighting/">
+                    <div class="image-container">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/2521800/header.jpg" alt="VRSO Bare Knuckle Fighting">
+                        <h3>
+                            VRSO Bare Knuckle Fighting
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2521800/ss_cb37c1159aebdbeec295e273a21b9ad395dc74a3.1920x1080.jpg?t=1763019687</span>
+                    <span class="data-desc">A competitive bare-knuckle fighting game focused on realistic striking, stamina management, and skill-based player-versus-player combat.</span>
+                    <span class="data-genres">Sports, Action</span>
+                    <span class="data-multiplayer">Yes (PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
+            <div class="game-item" data-tags="horror adventure 1st" data-release="2025" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/2622940/Frenzy_Blood/">
+                    <div class="image-container">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/2622940/header.jpg" alt="Frenzy Blood">
+                        <h3>
+                            Frenzy Blood
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2622940/ss_1363e2be6147a9b8c25bf2f506bfabd56fd2e213.1920x1080.jpg?t=1765787698</span>
+                    <span class="data-desc">A visceral horror adventure where you play as bounty hunter on the trail of insane doctor in an alternate 1930s noir America.</span>
+                    <span class="data-genres">Horror, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="flight action narrative adventure 1st" data-release="2026-Q1" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/3846630/SKY_LEGENDS__An_Aeropostal_Epic/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3846630/7802bd1181aed2c1219b9de0822d9d548cbef53a/header.jpg?t=1751959983" alt="SKY LEGENDS An Aeropostal Epic">
+                        <h3>
+                            SKY LEGENDS: An Aeropostal Epic
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3846630/ce1623850b09ae8da73e5e247ad485dad431ee82/ss_ce1623850b09ae8da73e5e247ad485dad431ee82.1920x1080.jpg?t=1751959983</span>
+                    <span class="data-desc">A narrative-driven flight adventure where players pilot vintage aircraft, complete dangerous deliveries, and experience a story set in the early age of aviation.</span>
+                    <span class="data-genres">Flight, Action, Narrative, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
+            <div class="game-item" data-tags="shooter simulation action 1st" data-release="2025" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3362250/NOT_TACTICAL_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3362250/header.jpg?t=1743150255" alt="NOT TACTICAL VR">
+                        <h3>
+                            NOT TACTICAL VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3362250/ss_afa63e70a5b94d88c80f6d4af1320eed61c83649.1920x1080.jpg?t=1743150255</span>
+                    <span class="data-desc"> As a mercenary, you must loot, upgrade, and attack to survive and claim victory on the battlefield. Upgrade your character in a variety of ways, including buying weapons, looting, and earning rewards from missions.</span>
+                    <span class="data-genres">Shooter, Simulation, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action platformer 1st" data-release="2026-01-14" data-high-profile="5">
+                <a href="https://store.steampowered.com/app/3911690/Void_Jump_VR/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3911690/7f9db35fb18d270c4e2342ed90e53e3771654078/header.jpg?t=1765459313" alt="Void Jump VR">
+                        <h3>
+                            Void Jump VR
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3911690/054822296ff8a1e611d617624e793f34b01a16b5/ss_054822296ff8a1e611d617624e793f34b01a16b5.1920x1080.jpg?t=1765459313</span>
+                    <span class="data-desc">A fast-moving platformer built around precision jumping, momentum-based movement, and challenging obstacle courses in abstract environments.</span>
+                    <span class="data-genres">Action, Platformer</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action racing flight platformer multiplayer 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/2078200/Exer_Gale/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2078200/7c56d30dfc6f301fd4e310128aa13d3b8cf421dc/header.jpg?t=1760037949" alt="Exer Gale">
+                        <h3>
+                            Exer Gale
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2078200/44adc6da5ce90eb6d44aa10348bc61d84ee90c42/ss_44adc6da5ce90eb6d44aa10348bc61d84ee90c42.1920x1080.jpg?t=1760037949</span>
+                    <span class="data-desc">A high-speed action racer combining flying, obstacle-dodging, and competitive courses designed for intense physical movement.</span>
+                    <span class="data-genres">Action, Flight, Platformer</span>
+                    <span class="data-multiplayer">Yes (PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="racing action co-op multiplayer 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2353980/Levity_Race/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2353980/header.jpg?t=1745897402" alt="Levity Race">
+                        <h3>Levity Race</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2353980/0d1e9614f6b6c4d68a0d941c5f663cd211b8b970/ss_0d1e9614f6b6c4d68a0d941c5f663cd211b8b970.1920x1080.jpg?t=1745897402</span>
+                    <span class="data-desc">A full-body hoverboard VR racing game with weapons. Challenge other players or your friends in high-speed races on multiple tracks.</span>
+                    <span class="data-genres">Racing, Action</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle boardgame multiplayer 3rd" data-release="2026" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/3551180/Ultima_Chess_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3551180/3ed9097f561f0c3069069baa38d82358a1a51663/header.jpg?t=1760183693" alt="Ultima Chess VR">
+                        <h3>Ultima Chess VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3551180/8a97bfd3f4a288f07745019e0a833b81f6afd324/ss_8a97bfd3f4a288f07745019e0a833b81f6afd324.1920x1080.jpg?t=1760183693</span>
+                    <span class="data-desc">A new kind of strategy fusion with thrilling VR action. Experience classic chess where every piece comes to life for an epic fantasy fight.</span>
+                    <span class="data-genres">Puzzle, Boardgame, Strategy, Simulation</span>
+                    <span class="data-multiplayer">Yes (PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure horror shooter 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/3883710/GET_OUT/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3883710/7c3cd3261b47687fa47ebe2f895c4580ed89ae59/header.jpg?t=1765378163" alt="GET OUT">
+                        <h3>GET OUT</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3883710/0471f6a2148cf7a1c31d1dfb4c4339f52dc22131/ss_0471f6a2148cf7a1c31d1dfb4c4339f52dc22131.1920x1080.jpg?t=1765378163</span>
+                    <span class="data-desc">A 1-4 player online co-op psychological horror where you must complete tasks and puzzles to banish the entities that have trapped you and your team.</span>
+                    <span class="data-genres">Action, Adventure, Horror, Shooter, Puzzle</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle escaperoom 1st" data-release="TBA" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/4164840/Tammuz_Blood__Sand/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4164840/86b11db361244709b45ba0b2b55c9f956ae2daa5/header.jpg?t=1764770704" alt="Tammuz: Blood & Sand">
+                        <h3>Tammuz: Blood & Sand</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4164840/e33b7bcc3df659a605d18a97d70866811ce9b890/ss_e33b7bcc3df659a605d18a97d70866811ce9b890.1920x1080.jpg?t=1764770704</span>
+                    <span class="data-desc">A mythic VR puzzle-box adventure inspired by ancient Mesopotamian legends. Trapped inside a divine cube, solve over 20 intricate physical puzzles.</span>
+                    <span class="data-genres">Puzzle, Escaperoom</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action shooter 1st" data-release="2026-Q1" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/3064880/Codebreakers_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3064880/header.jpg?t=1764964756" alt="Codebreakers VR">
+                        <h3>Codebreakers VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3064880/3e744f98dfcf5e98ff2b885c02c477686b5afd92/ss_3e744f98dfcf5e98ff2b885c02c477686b5afd92.1920x1080.jpg?t=1764964756</span>
+                    <span class="data-desc">A chaotic VR Action Shooter set in a dystopian future. Infiltrate high-security facilities, defeat enemies, and climb the leader board.</span>
+                    <span class="data-genres">Action, Shooter</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action shooter 1st" data-release="2026-03-19" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/3424760/GunX__Lock_and_Load/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3424760/3604295569b6b576cfa114727c7429e173a6b520/header.jpg?t=1764387494" alt="GunX - Lock and Load">
+                        <h3>GunX - Lock and Load</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3424760/ss_4fee5fc6ab2c9f2a9f6544050cd18ccff9998003.1920x1080.jpg?t=1764387494</span>
+                    <span class="data-desc">An intense VR shooter that challenges players to assemble and operate deadly firearms under pressure, fending off infected hordes in solo or co-op survival.</span>
+                    <span class="data-genres">Action, Shooter, Survival, Co-op</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="rpg action turnbased dungeoncrawler 1st" data-release="2026-Q2" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/2577730/Golel/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2577730/header.jpg" alt="Golel">
+                        <h3>Golel</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2577730/ss_ae76435eadb77c98940420dedb0899f5443eaec6.1920x1080.jpg?t=1764972283</span>
+                    <span class="data-desc">A first-person, dungeon crawler RPG with turn-based actions and tile-based movement, where combat is focused on mobility and using the environment to your advantage.</span>
+                    <span class="data-genres">RPG, Action, Turnbased, Dungeoncrawler</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="horror exploration 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2815020/Slender_The_Arrival_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2815020/header.jpg" alt="Slender: The Arrival VR">
+                        <h3>Slender: The Arrival VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2815020/ss_d2b2001e3b30013e69cc4bcb55ea6b042c4a6dfd.1920x1080.jpg?t=1754898686</span>
+                    <span class="data-desc">The official re-imagining and expansion of the original Slender Man game, featuring a new storyline and characters, now fully immersive in virtual reality.</span>
+                    <span class="data-genres">Horror, Exploration, Survival, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action multiplayer co-op 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1037380/Cradle_of_Sins/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1037380/header.jpg" alt="Cradle of Sins">
+                        <h3>Cradle of Sins</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1037380/ss_3e2dcd90b8832b76faa27a173cd3ca454e0db399.1920x1080.jpg?t=1739447715</span>
+                    <span class="data-desc">A PC & VR Cross-platform action adventure game set in a comically dark world, featuring both a competitive 3v3 MOBA battle arena and a co-op campaign.</span>
+                    <span class="data-genres">Action, Multiplayer, Co-op, Strategy, Adventure</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure puzzle escaperoom 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/3186770/Oldest_Golden_Treasure/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3186770/f922a746d493b67e9e722d47454a82fb6ae097c6/header.jpg?t=1760547287" alt="Oldest Golden Treasure">
+                        <h3>Oldest Golden Treasure</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3186770/f7cb329d9cd994caa021bbfbb918486f94d5a760/ss_f7cb329d9cd994caa021bbfbb918486f94d5a760.1920x1080.jpg?t=1760547287</span>
+                    <span class="data-desc">A VR detective adventure and escape room where you investigate a mysterious disappearance in a bank after a robbery. Solve all riddles and uncover the truth.</span>
+                    <span class="data-genres">Adventure, Puzzle, Escaperoom</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure flight simulation narrative 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1325580/The_Mighty_Eighth_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1325580/header.jpg?t=1762203342" alt="The Mighty Eighth VR">
+                        <h3>The Mighty Eighth VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1325580/ss_3478978d00fb0b4302aeb4bb469eef8f77dfcef3.1920x1080.jpg?t=1762203342</span>
+                    <span class="data-desc">Experience the Strategic Bombing Campaign over Europe as a B-17 Flying Fortress crew member. Partner up with up to 9 friends in this co-op flight simulation.</span>
+                    <span class="data-genres">Action, Adventure, Flight, Simulation, Narrative</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure narrative sword 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/3017360/Ember_Souls/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3017360/373fd31e0cf1b8c91e7a1e0f98f19d479811dbfd/header.jpg?t=1764108839" alt="Ember Souls">
+                        <h3>Ember Souls</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3017360/ss_45e4974a747824454512a7d17201a261c42866d6.1920x1080.jpg?t=1764108839</span>
+                    <span class="data-desc">A thrilling VR hack-and-slash blending parkour, climbing, and environmental puzzles in a luxurious Persian palace. Harness the power of the Ember Stones to defeat the Shadow Sultan.</span>
+                    <span class="data-genres">Action, Adventure, Narrative, Sword, Puzzle</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure 1st" data-release="TBA" data-high-profile="7">
+                <a href="">
+                    <div class="image-container">
+                        <img src="https://i.imgur.com/UyUY4nF.jpeg" alt="New Game (Compound Developer)">
+                        <h3>New Game from Bevan McKechnie (Compound Developer)</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://i.imgur.com/gQDEen4.png</span>
+                    <span class="data-desc">The next project from the developer of COMPOUND. Expected to be a retro-styled first-person action game focusing on free-roaming, skill-based VR combat and movement.</span>
+                    <span class="data-genres">Action, Shooter, Adventure</span>
+                    <span class="data-multiplayer">No (Likely Singleplayer)</span>
+                    <span class="data-release-date"></span>
+
+                    <span class="data-secondary-link" 
+                    data-url="https://discord.gg/5S34WskSWx" 
+                    data-text="View Discord">                         
+
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action adventure puzzle flight 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2710650/Quantum_Void/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2710650/header.jpg" alt="Quantum Void">
+                        <h3>Quantum Void</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2710650/5324c5bba2385e50a00b814c385ae55787c16580/ss_5324c5bba2385e50a00b814c385ae55787c16580.1920x1080.jpg?t=1765354795</span>
+                    <span class="data-desc">Lost in an unexplored star system after a dimensional anomaly, you must pilot your tugship to explore fleet wrecks, solve puzzles, and uncover the mystery to escape.</span>
+                    <span class="data-genres">Action, Adventure, Puzzle, Flight, Exploration, Metroidvania</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure exploration horror shooter 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1234880/Troll_Hunter_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1234880/header.jpg" alt="Troll Hunter VR">
+                        <h3>Troll Hunter VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1234880/ss_6f3debbd634c4dff1cb59dc89073cebea5b3089c.1920x1080.jpg?t=1726805112</span>
+                    <span class="data-desc">An action-adventure horror game where you explore harsh nature, study ghastly trolls, set traps, and hunt them down using your wit, a trusty shotgun, and DIY devices.</span>
+                    <span class="data-genres">Adventure, Exploration, Horror, Shooter, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure exploration shooter 1st" data-release="TBA" data-high-profile="10">
+                <a href="https://store.steampowered.com/app/2521200/Wicked_Game/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2521200/header.jpg" alt="Wicked Game">
+                        <h3>Wicked Game</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2521200/ss_f8c267d162a8d3a68ec2e6511d36e89c9010806e.1920x1080.jpg?t=1712216274</span>
+                    <span class="data-desc">A stunning VR action game for the most ferocious players with full physics-driven brawl and action-packed shooter combat in an interactive arena.</span>
+                    <span class="data-genres">Action, Shooter, Exploration, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="action shooter towerdefence 1st casual" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/3006610/Punch_A_Plant/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3006610/header.jpg" alt="Punch A Plant!">
+                        <h3>Punch A Plant!</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3006610/ss_3190b294ec08c411d02052c1dccb5b5145dfeaba.1920x1080.jpg?t=1756210431</span>
+                    <span class="data-desc">A hilarious VR action game where you use only your fists to punch and smash your way to protect your space station generators from waves of mutated plants.</span>
+                    <span class="data-genres">Action, Shooter, Towerdefence, Casual</span>
+                    <span class="data-multiplayer">No (Singleplayer - Co-op coming soon)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle platformer action 1st multiplayer" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/1046760/Hyperstacks/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1046760/header.jpg" alt="Hyperstacks">
+                        <h3>Hyperstacks</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1046760/ss_bf7032013778052d522f8be95cb9ac7c7e322daa.1920x1080.jpg?t=1701618720</span>
+                    <span class="data-desc">A frenetic VR action-puzzle-platformer-sandbox game. Create epic levels with a powerful editor, battle robots, solve puzzles, and compete or cooperate with other players.</span>
+                    <span class="data-genres">Puzzle, Platformer, Action, Roguelike, Multiplayer</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="exploration casual rpg 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/2779600/Splinterra/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2779600/header.jpg" alt="Splinterra">
+                        <h3>Splinterra</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2779600/d8e3425dcf9ec4cabf69631387edf952aa5e866f/ss_d8e3425dcf9ec4cabf69631387edf952aa5e866f.1920x1080.jpg?t=1747328506</span>
+                    <span class="data-desc">Explore a world of floating islands and use cards to cast spells and summon creatures in combat. The combat blends the fluid feeling of real-time with the reliability of turn-based RPGs.</span>
+                    <span class="data-genres">Exploration, Casual, RPG, Realtime, Turnbased</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure exploration metroidvania 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1576400/Blightseeker/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1576400/header.jpg" alt="Blightseeker">
+                        <h3>Blightseeker</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1576400/ss_060a4c2127293e13dec4f3938baa2911b71a36fe.1920x1080.jpg?t=1707957643</span>
+                    <span class="data-desc">Jump and dash through unknown, labyrinthine worlds in this VR Metroidvania adventure. Fight back against maddened creatures or cure them of the blight that fuels their rage.</span>
+                    <span class="data-genres">Adventure, Exploration, Metroidvania, Platformer, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="exploration casual 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2133850/Broken_Reality_2000/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2133850/header.jpg" alt="Broken Reality 2000">
+                        <h3>Broken Reality 2000</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2133850/ss_f2b20ce879d495c9ed792a097bdd94d3de668f58.1920x1080.jpg?t=1760585513</span>
+                    <span class="data-desc">An adventure set in a 3D parody of the internet. Explore an ethereal metaverse full of quests, puzzles, and light platforming as you raise your popularity to earn access to new areas.</span>
+                    <span class="data-genres">Exploration, Casual, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="narrative casual simulation 1st" data-release="2027-Q1" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2439770/PROJECT_MIX/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2439770/header.jpg" alt="PROJECT MIX">
+                        <h3>PROJECT MIX</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2439770/ss_dc103055d63ffab71c563dcbc2d077ef3651b3b7.1920x1080.jpg?t=1759032881</span>
+                    <span class="data-desc">A cyberpunk bartending sim where you serve waifus in a gritty neon-soaked red light district. Mix drinks, listen to stories, and influence the narrative in this immersive VR visual novel.</span>
+                    <span class="data-genres">Narrative, Casual, Simulation</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="narrative puzzle adventure 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/3048100/LOVESICK/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3048100/header.jpg" alt="LOVESICK">
+                        <h3>LOVESICK</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3048100/ss_c09c50f729b1f7f3ef291babbd7419d214638f86.1920x1080.jpg?t=1758049424</span>
+                    <span class="data-desc">After a supernatural event plunges a struggling post-punk band into a twisted reality, you must navigate surreal mindscapes and solve puzzles to rescue your bandmates before they are swallowed by their own fears.</span>
+                    <span class="data-genres">Narrative, Puzzle, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="shooter action survival co-op multiplayer 1st" data-release="2025-Q4" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/2366100/A_Long_Survive/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2366100/header.jpg" alt="A Long Survive">
+                        <h3>A Long Survive</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2366100/241c49d4808e387a47289246b3891012893d5276/ss_241c49d4808e387a47289246b3891012893d5276.1920x1080.jpg?t=1759954891</span>
+                    <span class="data-desc">A cooperative survival shooter where you battle waves of enemies and manage resources to protect the Nexus. Choose unique heroes, build defenses, and strategize with your team to survive the siege.</span>
+                    <span class="data-genres">Shooter, Action, Survival, Multiplayer, Co-op</span>
+                    <span class="data-multiplayer">Yes (Co-Op, PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="narrative puzzle horror adventure 1st" data-release="2025-Q4" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/3415410/Project_Louisiana__The_BOUNDS_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3415410/header.jpg" alt="Project Louisiana: The BOUNDS VR">
+                        <h3>Project Louisiana: The BOUNDS VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3415410/ss_cdaea24dd200c7cc7cf3cad4e901b668c594a9de.1920x1080.jpg?t=1760804525</span>
+                    <span class="data-desc">Inspired by classic survival horror, explore a mansion and the New Orleans swamps to find your missing daughter. Uncover the secrets of a voodoo cult in this atmospheric mystery.</span>
+                    <span class="data-genres">Narrative, Puzzle, Horror, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="platformer adventure multiplayer 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/3024720/Sky_Climb/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3024720/header.jpg" alt="Sky Climb">
+                        <h3>Sky Climb</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3024720/ss_b09a34329a0135aa0d831db16a70aae019d189f3.1920x1080.jpg?t=1730396331</span>
+                    <span class="data-desc">A first-person VR platformer featuring an intuitive arm-based locomotion system. Fling yourself through low-gravity worlds in a single-player campaign or race up to 6 players online.</span>
+                    <span class="data-genres">Platformer, Adventure, Multiplayer</span>
+                    <span class="data-multiplayer">Yes (PvP)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure action puzzle sword 1st" data-release="TBA" data-high-profile="8">
+                <a href="https://store.steampowered.com/app/2280700/Skera_VR/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2280700/header.jpg" alt="Skera VR">
+                        <h3>Skera VR</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2280700/ss_93cda018e263cf3e868c343c35490a04f010e452.1920x1080.jpg?t=1758472188</span>
+                    <span class="data-desc">Imprisoned within a colossal tower, you must work with and against a resident AI. Use your sword to carve through puzzles and enemies to reactivate the tower and save your world.</span>
+                    <span class="data-genres">Adventure, Action, Puzzle</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure exploration puzzle action 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/2976780/Whispers_of_the_Tarnished_City/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2976780/header.jpg" alt="Whispers of the Tarnished City">
+                        <h3>Whispers of the Tarnished City</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2976780/ss_a93e39ffdcf47067fd44c0b3ed7a123ed82c7bc5.1920x1080.jpg?t=1735989517</span>
+                    <span class="data-desc">Explore the ruins of a magical sci-fi metropolis as an exiled prince. Uncover secrets in abandoned research labs and overgrown skyscrapers while staying vigilant against mysterious enemies.</span>
+                    <span class="data-genres">Adventure, Exploration, Puzzle, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="adventure exploration puzzle action 1st" data-release="TBA" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1975720/Soul_of_Kaeru/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1975720/header.jpg" alt="Soul of Kaeru">
+                        <h3>Soul of Kaeru</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1975720/ss_54e8df8ebea10e413059397d1af6eebbe61328a5.1920x1080.jpg?t=1723447117</span>
+                    <span class="data-desc">A Metroidvania-inspired VR adventure set in a miniature world within an ancient samurai's zen garden. Control a mysterious samurai frog in third-person while switching to first-person for puzzles and epic titan-scale battles.</span>
+                    <span class="data-genres">Adventure, Exploration, Puzzle, Action, Metroidvania</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle adventure exploration casual 1st" data-release="2026-Q1" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/3434370/Remembrance/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3434370/header.jpg" alt="Remembrance">
+                        <h3>Remembrance</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3434370/ss_e7657997410c4efbaec63f51a4c269256e95a6d7.1920x1080.jpg?t=1737804433</span>
+                    <span class="data-desc">Step into the fractured mind of a dying scientist in this mind-bending VR puzzle adventure. Piece together broken memories and uncover devastating truths as you navigate surreal landscapes to decide the fate of humanity.</span>
+                    <span class="data-genres">Puzzle, Adventure, Exploration, Casual, Narrative</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="puzzle rpg platformer adventure action 1st" data-release="TBA" data-high-profile="7">
+                <a href="https://store.steampowered.com/app/2474010/JARPUG/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2474010/header.jpg" alt="JARPUG">
+                        <h3>JARPUG</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2474010/ss_34850b01d27b3078595d1b98881c6f618458b4b9.1920x1080.jpg?t=1757337496</span>
+                    <span class="data-desc">A unique JRPG about a pug with a jar on her head. Explore a colorful 3D platformer world and engage in strategic turn-based battles where you can dodge and parry in real-time between commands.</span>
+                    <span class="data-genres">Puzzle, RPG, Platformer, Adventure, Action</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+            <div class="game-item" data-tags="rpg adventure action 1st" data-release="2025" data-high-profile="9">
+                <a href="https://store.steampowered.com/app/1878020/THE_KNIGHT_OF_NEPHIART/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1878020/header.jpg" alt="THE KNIGHT OF NEPHIART">
+                        <h3>THE KNIGHT OF NEPHIART</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1878020/ss_0d1911b823e3d9fa499de17637585ada73dfc683.1920x1080.jpg?t=1733727269</span>
+                    <span class="data-desc">Dive into an old-school VR RPG inspired by the classics. Lead a party as a knight to defeat the Demon King, traveling through a 360-degree fantasy world with a traditional turn-based command system.</span>
+                    <span class="data-genres">RPG, Adventure, Action, Turnbased</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
+
+
+
+
+
+
+            <button id="scrollToTopBtn" title="Go to top">&#9650;</button>
+
+        </div> <script>
+
+
+// This JavaScript makes the filters work with three states: include, exclude, or off
+            document.addEventListener('DOMContentLoaded', () => {
+
+    const filterButtons = document.querySelectorAll('#filter-buttons-group .filter-btn'); // genre filters
+    const releaseButtons = document.querySelectorAll('#release-filter-group .release-filter-btn'); // release filters
+    const clearAllButton = document.querySelector('#clear-all-btn');
+    const gameItems = document.querySelectorAll('#game-grid .game-item');
+    const gameCountElement = document.querySelector('#game-count');
+
+
+    // MAIN FILTER FUNCTION
+    // -------------------------
+    const filterGames = () => {
+
+        // 1. COLLECT INCLUSION & EXCLUSION GENRE FILTERS
+        const inclusionFilters = [];
+        const exclusionFilters = [];
+
+        filterButtons.forEach(button => {
+            if (button.classList.contains('active')) {
+                inclusionFilters.push(button.dataset.genre);
+            } else if (button.classList.contains('exclude')) {
+                exclusionFilters.push(button.dataset.genre);
+            }
+        });
+
+        // 2. GET ACTIVE RELEASE WINDOW FILTER (only one)
+        let activeReleaseFilter = null;
+        releaseButtons.forEach(btn => {
+            if (btn.classList.contains('active')) {
+                activeReleaseFilter = btn.dataset.release;
+            }
+        });
+
+        const hasActiveFilters =
+        inclusionFilters.length > 0 ||
+        exclusionFilters.length > 0 ||
+        activeReleaseFilter !== null;
+
+
+        // 3. RELEASE WINDOW TEST FUNCTION
+        function matchesReleaseWindow(item, filter) {
+            if (!filter) return true;
+
+            const raw = item.dataset.release;
+            const releaseDate = item.parsedDate; // already pre-parsed
+
+            // Special case: TBA → always counts as BEYOND
+            if (raw.toUpperCase() === "TBA") {
+                return filter === "beyond";
+            }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const year = today.getFullYear();
+            const month = today.getMonth();
+
+            const firstThisMonth = new Date(year, month, 1);
+            const firstNextMonth = new Date(year, month + 1, 1);
+            const firstFollowingMonth = new Date(year, month + 2, 1);
+
+            const firstNextYear = new Date(year + 1, 0, 1);
+            const firstYearAfterNext = new Date(year + 2, 0, 1);
+
+            switch (filter) {
+            case "this-month":
+                return releaseDate >= firstThisMonth && releaseDate < firstNextMonth;
+
+            case "next-month":
+                return releaseDate >= firstNextMonth && releaseDate < firstFollowingMonth;
+
+            case "this-year":
+                return releaseDate.getFullYear() === year;
+
+            case "next-year":
+                return releaseDate.getFullYear() === year + 1;
+
+            case "beyond":
+                    return releaseDate >= firstYearAfterNext; // AND includes TBA automatically
+
+                default:
+                    return true;
+                }
+            }
+
+        // 4. PROCESS ALL GAME ITEMS
+            let visibleCount = 0;
+
+            gameItems.forEach(item => {
+                const itemTags = item.dataset.tags ? item.dataset.tags.split(' ') : [];
+
+            // If NO filters at all → show everything
+                if (!hasActiveFilters) {
+                    item.classList.remove('hide');
+                    visibleCount++;
+                    return;
+                }
+
+            // Genre INCLUDE – must have ALL selected
+                const passesInclusion = inclusionFilters.every(f => itemTags.includes(f));
+
+            // Genre EXCLUDE – must NOT have ANY
+                const failsExclusion = exclusionFilters.some(f => itemTags.includes(f));
+
+            // Release Window
+                const passesRelease = matchesReleaseWindow(item, activeReleaseFilter);
+
+            // Final decision
+                if (passesInclusion && !failsExclusion && passesRelease) {
+                    item.classList.remove('hide');
+                    visibleCount++;
+                } else {
+                    item.classList.add('hide');
+                }
+            });
+
+
+        // 5. UPDATE COUNTER DISPLAY
+            if (gameCountElement) {
+                gameCountElement.textContent =
+            `${visibleCount} item${visibleCount !== 1 ? 's' : ''} visible`;
+        }
+    };
+
+    // GENRE FILTER CLICK HANDLERS
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+
+            // Three-way toggle: off → include → exclude → off
+            if (!button.classList.contains('active') && !button.classList.contains('exclude')) {
+                button.classList.add('active');
+            } else if (button.classList.contains('active')) {
+                button.classList.remove('active');
+                button.classList.add('exclude');
+            } else {
+                button.classList.remove('exclude');
+            }
+
+            filterGames();
+        });
+    });
+
+    // RELEASE FILTER CLICK (single-select)
+    releaseButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+
+            // If the button is already active, remove the active class
+            if (btn.classList.contains('active')) {
+                btn.classList.remove('active');
+            } else {
+                // Turn off all other release buttons
+                releaseButtons.forEach(b => b.classList.remove('active'));
+
+                // Activate the clicked button
+                btn.classList.add('active');
+            }
+
+            // Call the filter function after updating button state
+            filterGames();
+        });
+    });
+
+    // CLEAR ALL BUTTON
+    if (clearAllButton) {
+        clearAllButton.addEventListener('click', () => {
+
+            filterButtons.forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.remove('exclude');
+            });
+
+            releaseButtons.forEach(btn => btn.classList.remove('active'));
+
+            filterGames();
+        });
+    }
+    // Run once on load
+    filterGames();
+});            
+        // This JavaScript makes the game card info box expand
+document.addEventListener('DOMContentLoaded', function() {
+            // Select all expand buttons
+    const expandButtons = document.querySelectorAll('.expand-btn');
+
+    expandButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+                    // 1. STOP the click from activating the main <a> tag link
+            event.preventDefault(); 
+            event.stopPropagation();
+
+                    // 2. Find the main game item container
+            const gameItem = button.closest('.game-item');
+
+                    // 3. Toggle the expanded class
+            gameItem.classList.toggle('is-expanded');
+
+                    // 4. Update the ARIA state for accessibility
+            const isExpanded = gameItem.classList.contains('is-expanded');
+            button.setAttribute('aria-expanded', isExpanded);
+        });
+    });
+});      
+
+    // This JavaScript handles the sidebar toggle (MODIFIED)
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleButton = document.getElementById('menu-toggle');
+    const closeButton = document.querySelector('.sidebar .close-btn');
+    const sidebar = document.getElementById('sidebar-menu');
+
+    function toggleMenu() {
+            // MODIFIED: Toggle class on the BODY element
+        const isOpen = document.body.classList.toggle('sidebar-is-open');
+
+            // MODIFIED: Update ARIA on the toggle button
+        toggleButton.setAttribute('aria-expanded', isOpen);
+    }
+
+        // Open menu when hamburger is clicked
+    toggleButton.addEventListener('click', toggleMenu);
+
+        // Close menu when X is clicked
+    closeButton.addEventListener('click', toggleMenu);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+
+    // ---  SCROLL TO TOP FUNCTIONALITY ---
+    const scrollBtn = document.getElementById("scrollToTopBtn");
+
+    // Function to check scroll position and toggle button visibility
+    const scrollFunction = () => {
+        // Show the button if the user has scrolled down 300 pixels
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            scrollBtn.style.display = "block";
+        } else {
+            scrollBtn.style.display = "none";
+        }
+    };
+
+    // Function to scroll to the top of the document
+    const topFunction = () => {
+        // Use smooth scroll behavior if supported
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+        // Fallback for older browsers
+        document.body.scrollTop = 0; // For Safari
+        document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+    };
+
+    // 1. Add event listener for when the user scrolls
+    window.onscroll = scrollFunction;
+
+    // 2. Add event listener for when the button is clicked
+    if (scrollBtn) {
+        scrollBtn.addEventListener('click', topFunction);
+    }
+});
+
+// --- Content Loading Function ---
+async function loadMainContent() {
+    try {
+        const response = await fetch('main-content.html');
+
+                // Check if the file was found
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const htmlContent = await response.text();
+        const mainContentEl = document.getElementById('main-content');
+
+        if (mainContentEl) {
+            mainContentEl.innerHTML = htmlContent;
+
+                    // --- 3. Initialize Content-Dependent Scripts ---
+                    // These functions MUST run *after* the content is loaded
+            initFilterButtons();
+            initExpandButtons();
+        }
+
+    } catch (error) {
+        console.error('Could not load main content:', error);
+        document.getElementById('main-content').innerHTML = '<p style="color: white; text-align: center;">Error: Could not load game list.</p>';
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const items = [...document.querySelectorAll(".game-item")];
+    const grid = document.querySelector("#game-grid");
+    const sortToggleButton = document.getElementById('sort-toggle-btn');
+    const TODAY = new Date();
+    TODAY.setHours(0, 0, 0, 0);
+
+    // Function to parse release date string into a date object and label
+    function parseReleaseDate(str) {
+        if (!str) return { date: new Date(2999, 11, 31), label: "TBA" };
+
+        str = str.trim().toUpperCase();
+
+        // TBA
+        if (str === "TBA") {
+            return { date: new Date(2999, 11, 31), label: "TBA" };
+        }
+
+        // Full date YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            return { date: new Date(str), label: str };
+        }
+
+        // Year-Month (YYYY-MM)
+        if (/^\d{4}-\d{2}$/.test(str)) {
+            const [year, month] = str.split('-').map(Number);
+            // Set date to the last day of the month
+            const lastDayOfMonth = new Date(year, month, 0);  // '0' means the last day of the previous month
+            return {
+                date: lastDayOfMonth,
+                label: `${lastDayOfMonth.toLocaleString('default', { month: 'long' })} ${year}`
+            };
+        }
+
+        // Quarter YYYY-Q#
+        const qMatch = str.match(/^(\d{4})-Q([1-4])$/);
+        if (qMatch) {
+            const year = parseInt(qMatch[1], 10);
+            const quarter = parseInt(qMatch[2], 10);
+
+            const quarterStart = {
+                1: new Date(year, 3, 30),   // mar 30
+                2: new Date(year, 6, 30),   // jun 30
+                3: new Date(year, 9, 30),   // sept 30
+                4: new Date(year, 12, 30)    // dec 30
+            };
+            return {
+                date: quarterStart[quarter],
+                label: `${year} Q${quarter}`
+            };
+        }
+
+        // Year only "YYYY"
+        if (/^\d{4}$/.test(str)) {
+            const year = parseInt(str, 10);
+
+            // Assume year-only means **Dec 31**
+            return {
+                date: new Date(year, 11, 31),
+                label: str
+            };
+        }
+
+        // Unknown format = treat as TBA
+        return {
+            date: new Date(2999, 11, 31),
+            label: "TBA"
+        };
+    }
+    
+    // NEW FUNCTION: Calculate days difference and return formatted text
+    function getDaysUntilRelease(releaseDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Check for TBA/Past Dates
+        if (releaseDate.getFullYear() > 2900) return "TBA";
+        if (releaseDate < today) return "Released";
+
+        // Calculate days difference
+        const diffTime = releaseDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        return `${diffDays} days remaining`;
+    }
+
+    // Apply parsed date and display readable labels
+    items.forEach(item => {
+        const raw = item.dataset.release;
+        const parsed = parseReleaseDate(raw);
+
+        item.parsedDate = parsed.date;
+
+        const labelEl = item.querySelector(".release-date");
+        if (labelEl) labelEl.textContent = parsed.label;
+        
+        // --- NEW: Populate hidden data-release-date span ---
+        const releaseInfoEl = item.querySelector(".data-release-date");
+        const daysRemainingText = getDaysUntilRelease(item.parsedDate);
+        
+        if (releaseInfoEl) {
+            // Set the full, descriptive text, removing <br> to keep it on one line.
+            releaseInfoEl.innerHTML = `
+                ${parsed.label}
+                &nbsp;&nbsp;
+                (${daysRemainingText})
+            `;
+        }
+    });
+
+    // Sort items by future release date
+    const sortByReleaseDate = () => {
+        return items.sort((a, b) => a.parsedDate - b.parsedDate);
+    };
+
+    // Sort items by Priority (by the numeric data-high-profile rank)
+    const sortByPriorityOrder = () => {
+        return items.sort((a, b) => {
+            // Parse the numeric rank from the data attribute.
+            // Use '|| 999' as a fallback to ensure any non-numeric or missing ranks 
+            // are treated as low priority (pushed to the end).
+            const aRank = parseInt(a.dataset.highProfile, 10) || 999;
+            const bRank = parseInt(b.dataset.highProfile, 10) || 999;
+
+            // Since 1 is the highest rank, aRank - bRank sorts ascending (1 comes before 2).
+            return aRank - bRank;
+        });
+    };
+
+
+    // Update the grid display based on sorted items
+    const updateGridDisplay = (sortedItems) => {
+        grid.innerHTML = '';  // Clear the grid
+        sortedItems.forEach(item => grid.appendChild(item));
+        
+        // *** NEW: Apply the dynamic color after updating the grid ***
+        setDynamicProfileColors(); 
+    };
+
+    // Toggle sorting when the button is clicked
+    let sortByPriorityFlag = false;  // Flag to track current sorting method
+
+    sortToggleButton.addEventListener('click', () => {
+        sortByPriorityFlag = !sortByPriorityFlag;  // Toggle the sorting flag
+        const sortedItems = sortByPriorityFlag ? sortByPriorityOrder() : sortByReleaseDate();  // Choose sorting method
+        updateGridDisplay(sortedItems);  // Update the grid with sorted items
+
+        // Update button text to reflect the current sorting method
+        sortToggleButton.textContent = sortByPriorityFlag ? 'Sorting Priority' : 'Sorting Release Date';
+    });
+
+    // Initial sort by Release Date and display the items
+    const sortedByReleaseDate = sortByReleaseDate();
+    updateGridDisplay(sortedByReleaseDate);
+
+    // Determine the NEXT UPCOMING release (future only)
+    const upcomingList = sortedByReleaseDate.filter(x => x.parsedDate >= TODAY);
+    const next = upcomingList.length > 0 ? upcomingList[0] : null;
+
+    if (next) {
+        document.querySelector("#next-release-box").style.display = "block";
+
+        // Pull the thumbnail image for background
+        const img = next.querySelector("img");
+        if (img) {
+            const box = document.querySelector("#next-release-box");
+            box.style.setProperty("--bg-img", `url(${img.src})`);
+            box.style.setProperty("background-image", `url(${img.src})`);
+            box.style.backgroundSize = "cover";
+            box.style.backgroundPosition = "center";
+        }
+
+        document.querySelector("#next-title").textContent =
+        next.querySelector("h3").innerText.trim();
+
+        const target = next.parsedDate.getTime();
+
+        // Update countdown for the next release
+        function updateCountdown() {
+            const now = Date.now();
+            const diff = target - now;
+            const countdownEl = document.querySelector("#countdown");
+
+            // If today IS the release date
+            if (Math.abs(diff) < 24 * 60 * 60 * 1000) {
+                countdownEl.textContent = "Released Today!";
+                return;
+            }
+
+            // If the release date is past (rare)
+            if (diff < 0) {
+                countdownEl.textContent = "Released";
+                return;
+            }
+
+            // Normal countdown
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const mins = Math.floor((diff / (1000 * 60)) % 60);
+
+            countdownEl.textContent = `${days}d ${hours}h ${mins}m`;
+        }
+
+        updateCountdown();
+        setInterval(updateCountdown, 60000);
+    }
+});
+
+// NEW FUNCTION: Dynamically set game item border color based on numeric rank
+function setDynamicProfileColors() {
+    const gameItems = document.querySelectorAll('.game-item[data-high-profile]');
+    
+    // --- 🎨 COLOR ADJUSTMENT VARIABLES ---
+    const START_HUE = 140; // HUE for BEST rank (1). 120 = Green.
+    const END_HUE = 2;     // HUE for WORST rank (10). 0 = Red.
+    // -------------------------------------
+    
+    const maxRank = 10; 
+    const minRank = 1;
+    const HUE_RANGE = START_HUE - END_HUE; // Calculate the degree difference
+
+    gameItems.forEach(item => {
+        const rank = parseInt(item.dataset.highProfile, 10);
+        
+        if (isNaN(rank) || rank < minRank) {
+            item.style.setProperty('--profile-color', 'transparent');
+            return;
+        }
+
+        const clampedRank = Math.min(Math.max(rank, minRank), maxRank);
+        
+        // normalizedRank: 0 for Rank 1 (best) to 1 for Rank 7 (worst)
+        const normalizedRank = (clampedRank - minRank) / (maxRank - minRank);
+        
+        // Calculate the final hue
+        // START_HUE - (0 to 1) * HUE_RANGE
+        const hue = START_HUE - (normalizedRank * HUE_RANGE);
+
+        // Saturation (96%) and Lightness (70%) keep the colors vibrant
+        const color = `hsl(${hue}, 96%, 70%)`;
+
+        item.style.setProperty('--profile-color', color);
+    });
+}
+
+document.addEventListener('scroll', function () {
+    const container = document.querySelector('.bottom-buttons-container');
+
+    const scrollPos = window.innerHeight + window.scrollY;
+    const bottom = document.body.offsetHeight - 30;
+
+    if (scrollPos >= bottom) {
+        container.classList.add('show-buttons');
+    } else {
+        container.classList.remove('show-buttons');
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+
+    function closeCurrentPanel() {
+        const existingPanel = document.querySelector('.details-panel');
+        if (existingPanel) existingPanel.remove();
+        document.querySelectorAll('.game-item').forEach(el => el.classList.remove('active-parent'));
+    }
+
+    function createPanel(data) {
+        const div = document.createElement('div');
+        div.className = 'details-panel';
+
+        // We build the secondary button HTML *only* if the data exists
+        const secondaryButtonHTML = data.secLink ? `
+            <a href="${data.secLink}" target="_blank" class="filter-btn active" style="text-decoration:none; display:inline-block; border:none; box-shadow: 0 4px 15px rgba(39, 108, 245, 0.4);">
+                ${data.secText || "View Alternate Version"}
+            </a>
+        ` : '';
+
+        div.innerHTML = `
+        <div class="details-hero-bg" style="background-image: url('${data.bgSrc}');"></div>
+
+        <div class="details-panel-content">
+            <h2>${data.title}</h2>
+            <p class="game-desc">${data.desc}</p>
+
+            <div class="details-stats-grid">
+                <div class="stat-item"><strong>Genres</strong> ${data.genres}</div>
+                <div class="stat-item"><strong>Co-op / PvP</strong> ${data.multiplayer}</div>
+                <div class="stat-item"><strong>Release Date</strong> ${data.releaseInfo}</div> 
+            </div>
+
+            <div style="margin-top: 25px; display: flex; flex-wrap: wrap; gap: 15px;">
+                <a href="${data.link}" target="_blank" class="filter-btn active" style="text-decoration:none; display:inline-block; border:none; box-shadow: 0 4px 15px rgba(39, 108, 245, 0.4);">
+                    View Store Page
+                </a>
+
+                ${secondaryButtonHTML} 
+            </div>
+        </div>
+        `;
+        return div;
+    }
+    const gameGrid = document.getElementById('game-grid');
+
+    gameGrid.addEventListener('click', function(e) {
+        const item = e.target.closest('.game-item');
+        if (!item) return;
+
+        e.preventDefault();
+
+        if (item.classList.contains('active-parent')) {
+            closeCurrentPanel();
+            return;
+        }
+
+        closeCurrentPanel();
+        item.classList.add('active-parent');
+
+        const infoBlock = item.querySelector('.game-info-hidden');
+        if (!infoBlock) return;
+
+        const thumbSrc = item.querySelector('img').src;
+        const bgSpan = infoBlock.querySelector('.data-bg');
+        const bgSrc = bgSpan ? bgSpan.innerText : thumbSrc;
+
+                // NEW: Check for the secondary link span
+        const secLinkSpan = infoBlock.querySelector('.data-secondary-link');
+
+        const data = {
+            title: item.querySelector('h3').innerText,
+            link: item.querySelector('a').href,
+            bgSrc: bgSrc, 
+            desc: infoBlock.querySelector('.data-desc').innerHTML,
+            genres: infoBlock.querySelector('.data-genres').innerText,
+                releaseInfo: infoBlock.querySelector('.data-release-date').innerHTML, // <-- NEW LINE
+                multiplayer: infoBlock.querySelector('.data-multiplayer').innerText,
+                //comfort: infoBlock.querySelector('.data-comfort').innerText,
+
+                    // NEW: Add the secondary data to the object
+                secLink: secLinkSpan ? secLinkSpan.dataset.url : null,
+                secText: secLinkSpan ? secLinkSpan.dataset.text : null
+            };
+
+            const panel = createPanel(data);
+
+                // (Existing Grid Injection Logic remains unchanged)
+            const visibleItems = Array.from(gameGrid.querySelectorAll('.game-item:not(.hide)'));
+            const index = visibleItems.indexOf(item);
+            const gridComputedStyle = window.getComputedStyle(gameGrid);
+            const gridColumnValue = gridComputedStyle.getPropertyValue('grid-template-columns');
+            const itemsPerRow = gridColumnValue.split(' ').length;
+
+            const rowNumber = Math.floor(index / itemsPerRow);
+            let lastItemIndex = (rowNumber + 1) * itemsPerRow - 1;
+
+            if (lastItemIndex >= visibleItems.length) lastItemIndex = visibleItems.length - 1;
+
+            const referenceNode = visibleItems[lastItemIndex];
+            referenceNode.parentNode.insertBefore(panel, referenceNode.nextSibling);
+
+            setTimeout(() => {
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
+        });
+
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(btn => btn.addEventListener('click', closeCurrentPanel));
+});
+</script>
+
+</body>
+</html>
