@@ -631,67 +631,84 @@
     transition: transform 0.3s ease-in-out;
 }
 
-/* Style for the sidebar itself */
+/* Sidebar Container */
 .sidebar {
+    /* Layout & Positioning */
     position: fixed;
     top: 0;
     left: 0;
-    height: 100%;
-    width: 300px; /* Width of the menu */
-    background-color: #2c3e50; /* Dark background */
-    color: white;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    width: 300px;
+    height: 100vh;
+    z-index: 1000;
+    
+    /* Box Model */
     padding: 20px;
     box-sizing: border-box;
-
-    /* Initially hide the menu off-screen to the left */
+    background-color: #121d2e;
+    color: #fff;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+    
+    /* Scrolling & Animation */
+    overflow-y: auto;
     transform: translateX(-100%);
     transition: transform 0.3s ease-in-out;
 }
 
-/* MODIFIED: Class is now on the BODY, not the sidebar */
+/* State Management */
 body.sidebar-is-open .sidebar {
     transform: translateX(0);
 }
 
-/* Style for the Close Button */
+/* Internal Elements */
 .close-btn {
     position: absolute;
     top: 10px;
     right: 10px;
     background: none;
     border: none;
-    color: white;
+    color: inherit;
     font-size: 30px;
     cursor: pointer;
 }
 
-/* Sidebar Content Styling */
 .sidebar h2 {
-    margin-top: 60px;
+    margin: 60px 0 20px;
     font-size: 1.3em;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     padding-bottom: 10px;
-    margin-bottom: 20px;
 }
+
 .sidebar .faq-section h4 {
-    margin-top: 15px;
-    margin-bottom: 5px;
+    margin: 15px 0 5px;
 }
+
 .sidebar .faq-section p {
     font-size: 0.9em;
     line-height: 1.4;
     color: #ccc;
 }
 
-/* NEW STYLES FOR PUSH CONTENT (MODIFIED) */
+/* Custom Scrollbar Styling */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
 /* ------------------------------------------- */
+/* NEW STYLES FOR PUSH CONTENT */
+/* ------------------------------------------- */
+
 #main-content {
     /* This wrapper holds all the content that gets pushed */
     padding: 24px; /* Moved from body */
     transition: margin-left 0.3s ease-in-out;
-    margin-left: 0; /* Base state */
+    margin-left: 0; 
 }
 
 /* When the sidebar is open, push the main content */
@@ -699,10 +716,33 @@ body.sidebar-is-open #main-content {
     margin-left: 300px;
 }
 
-/* When the sidebar is open, push the hamburger menu */
+/* When the sidebar is open, hide the hamburger menu */
 body.sidebar-is-open .hamburger-menu {
-    /* Use transform for smoother animation */
-    transform: translateX(300px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* Prevents clicking the invisible button */
+    transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+/* Mobile Styles (Screens smaller than 768px) */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;          /* Full width of the screen */
+        left: 0;
+        /* Optional: increase font size for better mobile readability */
+        font-size: 1.1rem;
+    }
+
+    /* Ensure the main content doesn't shift if you're using a 'push' effect */
+    body.sidebar-is-open #main-content {
+        display: none;        /* Hide background content to save resources on mobile */
+    }
+
+    .close-btn {
+        font-size: 40px;      /* Make it a bigger touch target for fingers */
+        top: 20px;
+        right: 20px;
+    }
 }
 
 /* ------------------------------------------- */
@@ -877,7 +917,37 @@ body.sidebar-open #bottom-buttons .bottom-btn.right {
 body.sidebar-open .hamburger-menu {
     visibility: hidden;
 }
+a {
+    color: #00d4ff; /* A bright, readable cyan */
+    text-decoration: none; /* Optional: removes the underline */
+    transition: color 0.2s ease;
+}
+a:visited {
+    color: #a29bfe; /* A lighter, desaturated lavender instead of dark purple */
+}
+a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+}
 
+#sort-toggle-btn {
+    font-size: 13px;
+
+}
+
+.has-tooltip:not(:hover) .tooltip-text {
+    transition-delay: 0s 0.2s;
+}
+
+.controls {
+    text-align: center;
+    margin: 20px 0;
+}
+
+/* Optional: a slight "push" effect when clicked */
+.filter-btn:active {
+    transform: scale(0.95);
+}
 
 </style>
 </head>
@@ -890,8 +960,9 @@ body.sidebar-open .hamburger-menu {
         <button class="close-btn" aria-label="Close menu">&times;</button>
 
         <h2>Robot_ninja_pirate's Page of upcoming VR games</h2>
-
+        <div class="faq-section">
         <h3>Welcome to the page.</h3>
+
         <p>This ia a compiled list of all the upcoming VR games that I think look cool or are with keeping an eye out for.</p>
 
         <p>This list is a forked section from my larger Google excel spreadsheet of good VR games. <a href="https://docs.google.com/spreadsheets/d/1cnu3R813-RiJv9EPJD54qC7vBCrbh9xALIqz7hl5K-o/edit?gid=2144938032#gid=2144938032" target="_blank">View the full spreadsheet here.</a></p>
@@ -902,7 +973,7 @@ body.sidebar-open .hamburger-menu {
         <p>and a Curated list of my top favourite VR games <a href="https://rototrobot.github.io/VR-Games-List/" target="_blank"> View page here </a></p>     
 
 
-        <div class="faq-section">
+        
         </div>
     </div>
 
@@ -961,7 +1032,7 @@ body.sidebar-open .hamburger-menu {
             <div id="filter-status">
                 <button id="clear-all-btn" class="filter-btn">Clear Filters</button>
                 <span id="game-count"></span>
-                <button id="sort-toggle-btn">Sorting Release Date</button>
+                <button id="sort-toggle-btn" class="filter-btn">Sorting Release Date</button>
             </div>
 
         </div>
@@ -1009,7 +1080,25 @@ body.sidebar-open .hamburger-menu {
                 </div>
             </div>
 
+            <div class="game-item" data-tags="puzzle escaperoom adventure 1st" data-release="TBA" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/3492640/Dark_Trip/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3492640/098dd6263cec3daea8060efe87d9daade7078c91/header.jpg?t=1777370299" alt="Dark Trip">
+                        <h3>
+                        Dark Trip
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
 
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3492640/d11be35083349cac860bc9474f50c553466a9562/ss_d11be35083349cac860bc9474f50c553466a9562.1920x1080.jpg?t=1777370299</span>
+                    <span class="data-desc">Psychedelic horror escape room where you eat pills and see hallucinations to solve puzzles of an eerie crime case. The most unique and bizarre gaming experiences, where you take on the role of an investigator searching for a missing woman — and are forced to consume drugs during your mission. </span>
+                    <span class="data-genres">Puzzle Escape Room, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
 
             <div class="game-item" data-tags="shooter action multiplayer co-op 1st" data-release="2026-Q3" data-high-profile="1">
                 <a href="https://store.steampowered.com/app/3456660/PAYDAY_Aces_High/">
@@ -1232,6 +1321,29 @@ body.sidebar-open .hamburger-menu {
                 </div>
             </div>
 
+
+            <div class="game-item" data-tags="Horror  adventure exploration 1st port" data-release="TBA" data-high-profile="2">
+                <a href="https://store.steampowered.com/app/2215390/Five_Nights_at_Freddys_Secret_of_the_Mimic/">
+                    <div class="image-container">
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2215390/527bbebaa5764de58528487b3f2142c44a58b267/header.jpg?t=1763143943" alt="Five Nights at Freddy's: Secret of the Mimic">
+                        <h3>
+                        Five Nights at Freddy's: Secret of the Mimic
+                        </h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2215390/ee22303a9ee76db1ed79bc3692bc2671ce5365ba/ss_ee22303a9ee76db1ed79bc3692bc2671ce5365ba.1920x1080.jpg?t=1763143943</span>
+                    <span class="data-desc">Enter the abandoned workshop of Murray’s Costume Manor and unravel the mystery left behind by the reclusive inventor. In Five Nights at Freddy’s: Secret of the Mimic, you’ll step into a world where every dark corner holds a secret and every flicker of light hints at an ever-present threat. </span>
+                    <span class="data-genres">Horror Adventure, Exploration</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
+
             <div class="game-item" data-tags="action adventure shooter 1st port" data-release="TBA" data-high-profile="2">
                 <a href="https://store.steampowered.com/app/3534150/POSTAL_2_VR/">
                     <div class="image-container">
@@ -1286,7 +1398,7 @@ body.sidebar-open .hamburger-menu {
                 </div>
             </div>
 
-            <div class="game-item" data-tags="action roguelike shooter 1st" data-release="2026-04-24" data-high-profile="3">
+            <div class="game-item" data-tags="action roguelike shooter 1st" data-release="TBA" data-high-profile="3">
                 <a href="https://store.steampowered.com/app/3143930/PROTON_VR/">
                     <div class="image-container">
                         <div class="demo-icon"><span>Has</span><span>Demo</span></div>
@@ -1340,6 +1452,25 @@ body.sidebar-open .hamburger-menu {
             </div>
 
 
+            <div class="game-item" data-tags="puzzle adventure 1st" data-release="2026-06-19" data-high-profile="6">
+                <a href="https://store.steampowered.com/app/4541130/Div_Zero/">
+                    <div class="image-container">
+                        <div class="demo-icon"><span>Has</span><span>Demo</span></div>
+                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4541130/eb5ea5285024a390b5d71e4807cd21b141ee50b6/header.jpg?t=1774286450" alt="Div Zero">
+                        <h3>Div Zero</h3>
+                        <div class="release-date"></div>
+                    </div>
+                </a>
+                <div class="game-info-hidden" style="display: none;">
+                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/4541130/69772860ec6a93c62a933a077b6d94dfc1906435/ss_69772860ec6a93c62a933a077b6d94dfc1906435.1920x1080.jpg?t=1774286450</span>
+                    <span class="data-desc">A VR puzzle adventure where dimensional fractures have torn reality apart. Explore environments destabilized by the rift, solve spatial puzzles hidden across 10 distinct scenes, and follow signals, symbols, and strange objects to uncover what caused the collapse. </span>
+                    <span class="data-genres">Puzzle, Adventure</span>
+                    <span class="data-multiplayer">No (Singleplayer)</span>
+                    <span class="data-release-date"></span>
+                </div>
+            </div>
+
+
             <div class="game-item" data-tags="puzzle adventure narrative 1st" data-release="2026-Q2" data-high-profile="4">
                 <a href="https://store.steampowered.com/app/3480840/CloserLook_VR_Oldways/">
                     <div class="image-container">
@@ -1358,7 +1489,7 @@ body.sidebar-open .hamburger-menu {
                 </div>
             </div>
 
-            <div class="game-item" data-tags="adventure puzzle action shooter 1st" data-release="TBA" data-high-profile="2">
+            <div class="game-item" data-tags="adventure puzzle action shooter 1st" data-release="TBA" data-high-profile="1">
                 <a href="https://store.steampowered.com/app/2779620/Adrians_Quest/">
                     <div class="image-container">
                         <img src="https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2779620/52f43d83ebe8e57559876279c0edd8939c5deccb/header.jpg?t=1766147042" alt="AUTOMA">
@@ -1446,7 +1577,7 @@ body.sidebar-open .hamburger-menu {
                 </div>
             </div>
 
-            <div class="game-item" data-tags="narrative adventure 1st" data-release="TBA" data-high-profile="5">
+            <div class="game-item" data-tags="narrative adventure 1st" data-release="2026-Q3" data-high-profile="5">
                 <a href="https://store.steampowered.com/app/3129050/Echoes_of_Mora/">
                     <div class="image-container">
                         <div class="demo-icon"><span>Has</span><span>Demo</span></div>
@@ -1499,22 +1630,6 @@ body.sidebar-open .hamburger-menu {
                 </div>
             </div>
 
-            <div class="game-item" data-tags="action RPG co-op 1st" data-release="2026-04-27" data-high-profile="5">
-                <a href="https://store.steampowered.com/app/3847110/One_More_Delve/">
-                    <div class="image-container">
-                        <img src="https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3847110/92f301fa47b1172bea75826da3f2687bd1bf7a7e/header.jpg?t=1764477524" alt="One More Delve">
-                        <h3>One More Delve</h3>
-                        <div class="release-date"></div>
-                    </div>
-                </a>
-                <div class="game-info-hidden" style="display: none;">
-                    <span class="data-bg">https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3847110/22bffec033ad1517033ea17137f1dc95f5281acb/ss_22bffec033ad1517033ea17137f1dc95f5281acb.1920x1080.jpg?t=1764477524</span>
-                    <span class="data-desc">Dungeon crawling RPG with physics combat. Loot, level up, and fight through procedural dungeons with friends.</span>
-                    <span class="data-genres">Action, RPG</span>
-                    <span class="data-multiplayer">Yes (Co-Op)</span>
-                    <span class="data-release-date"></span>
-                </div>
-            </div>
 
             <div class="game-item" data-tags="action RPG 1st" data-release="TBA" data-high-profile="5">
                 <a href="https://store.steampowered.com/app/2908090/VITRIOL/">
